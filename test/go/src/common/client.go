@@ -25,7 +25,6 @@ import (
 	"flag"
 	"fmt"
 	"gen/thrifttest"
-	"net/http"
 	"thrift"
 )
 
@@ -76,21 +75,10 @@ func StartClient(
 	}
 	switch transport {
 	case "http":
-		if ssl {
-			tr := &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			}
-			client := &http.Client{Transport: tr}
-			trans, err = thrift.NewTHttpPostClientWithOptions(fmt.Sprintf("https://%s/", hostPort), thrift.THttpClientOptions{Client: client})
-			fmt.Println(hostPort)
-		} else {
-			trans, err = thrift.NewTHttpPostClient(fmt.Sprintf("http://%s/", hostPort))
-		}
-
+		trans, err = thrift.NewTHttpClient(fmt.Sprintf("http://%s/service", hostPort))
 		if err != nil {
 			return nil, err
 		}
-
 	case "framed":
 		trans = thrift.NewTFramedTransport(trans)
 	case "buffered":

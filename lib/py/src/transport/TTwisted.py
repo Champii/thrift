@@ -17,8 +17,8 @@
 # under the License.
 #
 
-from io import BytesIO
 import struct
+from cStringIO import StringIO
 
 from zope.interface import implements, Interface, Attribute
 from twisted.internet.protocol import ServerFactory, ClientFactory, \
@@ -34,14 +34,14 @@ from thrift.transport import TTransport
 class TMessageSenderTransport(TTransport.TTransportBase):
 
     def __init__(self):
-        self.__wbuf = BytesIO()
+        self.__wbuf = StringIO()
 
     def write(self, buf):
         self.__wbuf.write(buf)
 
     def flush(self):
         msg = self.__wbuf.getvalue()
-        self.__wbuf = BytesIO()
+        self.__wbuf = StringIO()
         return self.sendMessage(msg)
 
     def sendMessage(self, message):
@@ -82,18 +82,11 @@ class ThriftClientProtocol(basic.Int32StringReceiver):
         self.started.callback(self.client)
 
     def connectionLost(self, reason=connectionDone):
-        # the called errbacks can add items to our client's _reqs,
-        # so we need to use a tmp, and iterate until no more requests
-        # are added during errbacks
-        if self.client:
+        for k, v in self.client._reqs.iteritems():
             tex = TTransport.TTransportException(
                 type=TTransport.TTransportException.END_OF_FILE,
-                message='Connection closed (%s)' % reason)
-            while self.client._reqs:
-                _, v = self.client._reqs.popitem()
-                v.errback(tex)
-            del self.client._reqs
-            self.client = None
+                message='Connection closed')
+            v.errback(tex)
 
     def stringReceived(self, frame):
         tr = TTransport.TMemoryBuffer(frame)
@@ -120,7 +113,7 @@ class ThriftSASLClientProtocol(ThriftClientProtocol):
     MAX_LENGTH = 2 ** 31 - 1
 
     def __init__(self, client_class, iprot_factory, oprot_factory=None,
-                 host=None, service=None, mechanism='GSSAPI', **sasl_kwargs):
+            host=None, service=None, mechanism='GSSAPI', **sasl_kwargs):
         """
         host: the name of the server, from a SASL perspective
         service: the name of the server's service, from a SASL perspective
@@ -236,7 +229,7 @@ class ThriftServerProtocol(basic.Int32StringReceiver):
 
         d = self.factory.processor.process(iprot, oprot)
         d.addCallbacks(self.processOk, self.processError,
-                       callbackArgs=(tmo,))
+            callbackArgs=(tmo,))
 
 
 class IThriftServerFactory(Interface):
@@ -288,7 +281,7 @@ class ThriftClientFactory(ClientFactory):
 
     def buildProtocol(self, addr):
         p = self.protocol(self.client_class, self.iprot_factory,
-                          self.oprot_factory)
+            self.oprot_factory)
         p.factory = self
         return p
 
@@ -298,7 +291,7 @@ class ThriftResource(resource.Resource):
     allowedMethods = ('POST',)
 
     def __init__(self, processor, inputProtocolFactory,
-                 outputProtocolFactory=None):
+        outputProtocolFactory=None):
         resource.Resource.__init__(self)
         self.inputProtocolFactory = inputProtocolFactory
         if outputProtocolFactory is None:

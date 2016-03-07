@@ -52,6 +52,9 @@ sub new
         $self = { port => $args };
     }
 
+    if (not defined $self->{port}) {
+        die("port number not specified");
+    }
     if (not defined $self->{queue}) {
         $self->{queue} = 128;
     }

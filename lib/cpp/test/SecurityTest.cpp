@@ -29,8 +29,9 @@
 #include <thrift/transport/TSSLServerSocket.h>
 #include <thrift/transport/TSSLSocket.h>
 #include <thrift/transport/TTransport.h>
+#include "TestPortFixture.h"
 #include <vector>
-#ifdef __linux__
+#ifdef linux
 #include <signal.h>
 #endif
 
@@ -59,7 +60,7 @@ struct GlobalFixture
 			BOOST_TEST_MESSAGE(boost::format("argv[%1%] = \"%2%\"") % i % master_test_suite().argv[i]);
 		}
 
-    #ifdef __linux__
+    #ifdef linux
 		// OpenSSL calls send() without MSG_NOSIGPIPE so writing to a socket that has
 		// disconnected can cause a SIGPIPE signal...
 		signal(SIGPIPE, SIG_IGN);
@@ -82,7 +83,7 @@ struct GlobalFixture
     virtual ~GlobalFixture()
     {
 		apache::thrift::transport::cleanupOpenSSL();
-#ifdef __linux__
+#ifdef linux
 		signal(SIGPIPE, SIG_DFL);
 #endif
     }
@@ -94,7 +95,7 @@ BOOST_GLOBAL_FIXTURE(GlobalFixture);
 BOOST_GLOBAL_FIXTURE(GlobalFixture)
 #endif
 
-struct SecurityFixture
+struct SecurityFixture : public TestPortFixture
 {
     void server(apache::thrift::transport::SSLProtocol protocol)
     {
@@ -107,16 +108,15 @@ struct SecurityFixture
 
             pServerSocketFactory.reset(new TSSLSocketFactory(static_cast<apache::thrift::transport::SSLProtocol>(protocol)));
             pServerSocketFactory->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-            pServerSocketFactory->loadCertificate(certFile("server.crt").string().c_str());
-            pServerSocketFactory->loadPrivateKey(certFile("server.key").string().c_str());
+            pServerSocketFactory->loadCertificate(certFile("server.crt").native().c_str());
+            pServerSocketFactory->loadPrivateKey(certFile("server.key").native().c_str());
             pServerSocketFactory->server(true);
-            pServerSocket.reset(new TSSLServerSocket("localhost", 0, pServerSocketFactory));
+            pServerSocket.reset(new TSSLServerSocket("localhost", m_serverPort, pServerSocketFactory));
             boost::shared_ptr<TTransport> connectedClient;
 
             try
             {
                 pServerSocket->listen();
-                mPort = pServerSocket->getPort();
                 mCVar.notify_one();
                 lock.unlock();
 
@@ -160,10 +160,10 @@ struct SecurityFixture
             {
                 pClientSocketFactory.reset(new TSSLSocketFactory(static_cast<apache::thrift::transport::SSLProtocol>(protocol)));
                 pClientSocketFactory->authenticate(true);
-                pClientSocketFactory->loadCertificate(certFile("client.crt").string().c_str());
-                pClientSocketFactory->loadPrivateKey(certFile("client.key").string().c_str());
-                pClientSocketFactory->loadTrustedCertificates(certFile("CA.pem").string().c_str());
-                pClientSocket = pClientSocketFactory->createSocket("localhost", mPort);
+                pClientSocketFactory->loadCertificate(certFile("client.crt").native().c_str());
+                pClientSocketFactory->loadPrivateKey(certFile("client.key").native().c_str());
+                pClientSocketFactory->loadTrustedCertificates(certFile("CA.pem").native().c_str());
+                pClientSocket = pClientSocketFactory->createSocket("localhost", m_serverPort);
                 pClientSocket->open();
 
                 uint8_t buf[3];
@@ -207,7 +207,6 @@ struct SecurityFixture
 
     boost::mutex mMutex;
     boost::condition_variable mCVar;
-    int mPort;
     bool mConnected;
 };
 

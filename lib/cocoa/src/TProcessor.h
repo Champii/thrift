@@ -20,16 +20,10 @@
 #import <Foundation/Foundation.h>
 #import "TProtocol.h"
 
-NS_ASSUME_NONNULL_BEGIN
-
 
 @protocol TProcessor <NSObject>
 
--(BOOL) processOnInputProtocol:(id <TProtocol>)inProtocol
-                outputProtocol:(id <TProtocol>)outProtocol
-                         error:(NSError **)error;
+- (BOOL) processOnInputProtocol: (id <TProtocol>) inProtocol
+                 outputProtocol: (id <TProtocol>) outProtocol;
 
 @end
-
-
-NS_ASSUME_NONNULL_END

@@ -60,7 +60,7 @@
 
 #pragma warning(disable : 4996) // Deprecated posix name.
 
-#define VERSION "1.0.0-dev"
+#define VERSION "0.9.3"
 #define HAVE_GETTIMEOFDAY 1
 #define HAVE_SYS_STAT_H 1
 
@@ -94,6 +94,6 @@ typedef boost::uint8_t uint8_t;
 #else
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "advapi32.lib") // For security APIs in TPipeServer
-#pragma comment(lib, "Shlwapi.lib")  // For StrStrIA in TPipeServer
+#pragma comment(lib, "Shlwapi.lib") // For StrStrIA in TPipeServer
 #endif
 #endif // _THRIFT_WINDOWS_CONFIG_H_

@@ -53,24 +53,17 @@ public:
                    const std::map<std::string, std::string>& parsed_options,
                    const std::string& option_string)
     : t_generator(program) {
+    (void)parsed_options;
     (void)option_string;
-    std::map<std::string, std::string>::const_iterator iter;
-
-    standalone_ = false;
-    unsafe_ = false;
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("standalone") == 0) {
-        standalone_ = true;
-      } else if( iter->first.compare("noescape") == 0) {
-        unsafe_ = true;
-      } else {
-        throw "unknown option html:" + iter->first; 
-      }
-    }
-
-
     out_dir_base_ = "gen-html";
     input_type_ = INPUT_UNKNOWN;
+
+    std::map<std::string, std::string>::const_iterator iter;
+    iter = parsed_options.find("standalone");
+    standalone_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("noescape");
+    unsafe_ = (iter != parsed_options.end());
 
     escape_.clear();
     escape_['&'] = "&amp;";
@@ -747,7 +740,7 @@ void t_html_generator::print_const_value(t_type* type, t_const_value* tvalue) {
     case t_base_type::TYPE_BOOL:
       f_out_ << ((tvalue->get_integer() != 0) ? "true" : "false");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       f_out_ << tvalue->get_integer();
       break;
     case t_base_type::TYPE_I16:

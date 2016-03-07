@@ -179,7 +179,7 @@ Exception getSSLException(string location = null, string clientFile = __FILE__,
   Exception exception;
 
   void initMessage() {
-    message.destroy();
+    message.clear();
     hadMessage = false;
     if (!location.empty) {
       message ~= location;

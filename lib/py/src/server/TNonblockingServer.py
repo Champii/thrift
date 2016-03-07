@@ -24,21 +24,19 @@ only from the main thread.
 The thread poool should be sized for concurrent tasks, not
 maximum connections
 """
+import threading
+import socket
+import Queue
+import select
+import struct
 
 import logging
-import select
-import socket
-import struct
-import threading
-
-from six.moves import queue
+logger = logging.getLogger(__name__)
 
 from thrift.transport import TTransport
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 
 __all__ = ['TNonblockingServer']
-
-logger = logging.getLogger(__name__)
 
 
 class Worker(threading.Thread):
@@ -59,7 +57,7 @@ class Worker(threading.Thread):
                 callback(True, otrans.getvalue())
             except Exception:
                 logger.exception("Exception while processing request")
-                callback(False, b'')
+                callback(False, '')
 
 WAIT_LEN = 0
 WAIT_MESSAGE = 1
@@ -89,7 +87,7 @@ def socket_exception(func):
     return read
 
 
-class Connection(object):
+class Connection:
     """Basic class is represented connection.
 
     It can be in state:
@@ -106,7 +104,7 @@ class Connection(object):
         self.socket.setblocking(False)
         self.status = WAIT_LEN
         self.len = 0
-        self.message = b''
+        self.message = ''
         self.lock = threading.Lock()
         self.wake_up = wake_up
 
@@ -128,13 +126,13 @@ class Connection(object):
             self.len, = struct.unpack('!i', self.message)
             if self.len < 0:
                 logger.error("negative frame size, it seems client "
-                             "doesn't use FramedTransport")
+                              "doesn't use FramedTransport")
                 self.close()
             elif self.len == 0:
                 logger.error("empty frame, it's really strange")
                 self.close()
             else:
-                self.message = b''
+                self.message = ''
                 self.status = WAIT_MESSAGE
 
     @socket_exception
@@ -150,7 +148,7 @@ class Connection(object):
             read = self.socket.recv(self.len - len(self.message))
             if len(read) == 0:
                 logger.error("can't read frame from socket (get %d of "
-                             "%d bytes)" % (len(self.message), self.len))
+                              "%d bytes)" % (len(self.message), self.len))
                 self.close()
                 return
             self.message += read
@@ -164,7 +162,7 @@ class Connection(object):
         sent = self.socket.send(self.message)
         if sent == len(self.message):
             self.status = WAIT_LEN
-            self.message = b''
+            self.message = ''
             self.len = 0
         else:
             self.message = self.message[sent:]
@@ -187,10 +185,10 @@ class Connection(object):
             self.close()
             self.wake_up()
             return
-        self.len = 0
+        self.len = ''
         if len(message) == 0:
             # it was a oneway request, do not write answer
-            self.message = b''
+            self.message = ''
             self.status = WAIT_LEN
         else:
             self.message = struct.pack('!i', len(message)) + message
@@ -223,7 +221,7 @@ class Connection(object):
         self.socket.close()
 
 
-class TNonblockingServer(object):
+class TNonblockingServer:
     """Non-blocking server."""
 
     def __init__(self,
@@ -238,7 +236,7 @@ class TNonblockingServer(object):
         self.out_protocol = outputProtocolFactory or self.in_protocol
         self.threads = int(threads)
         self.clients = {}
-        self.tasks = queue.Queue()
+        self.tasks = Queue.Queue()
         self._read, self._write = socket.socketpair()
         self.prepared = False
         self._stop = False
@@ -254,7 +252,7 @@ class TNonblockingServer(object):
         if self.prepared:
             return
         self.socket.listen()
-        for _ in range(self.threads):
+        for _ in xrange(self.threads):
             thread = Worker(self.tasks)
             thread.setDaemon(True)
             thread.start()
@@ -271,7 +269,7 @@ class TNonblockingServer(object):
         In this case, we can just write anything to the second socket from
         socketpair.
         """
-        self._write.send(b'1')
+        self._write.send('1')
 
     def stop(self):
         """Stop the server.
@@ -292,7 +290,7 @@ class TNonblockingServer(object):
         """Does select on open connections."""
         readable = [self.socket.handle.fileno(), self._read.fileno()]
         writable = []
-        for i, connection in list(self.clients.items()):
+        for i, connection in self.clients.items():
             if connection.is_readable():
                 readable.append(connection.fileno())
             if connection.is_writeable():
@@ -334,7 +332,7 @@ class TNonblockingServer(object):
 
     def close(self):
         """Closes the server."""
-        for _ in range(self.threads):
+        for _ in xrange(self.threads):
             self.tasks.put([None, None, None, None, None])
         self.socket.close()
         self.prepared = False

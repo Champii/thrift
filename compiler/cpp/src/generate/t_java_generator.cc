@@ -58,54 +58,46 @@ public:
     (void)option_string;
     std::map<std::string, std::string>::const_iterator iter;
 
-    bean_style_ = false;
-    android_style_ = false;
-    private_members_ = false;
-    nocamel_style_ = false;
-    fullcamel_style_ = false;
-    android_legacy_ = false;
-    sorted_containers_ = false;
-    java5_ = false;
-    reuse_objects_ = false;
-    use_option_type_ = false;
-    undated_generated_annotations_  = false;
-    suppress_generated_annotations_ = false;
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("beans") == 0) {
-        bean_style_ = true;
-      } else if( iter->first.compare("android") == 0) {
-        android_style_ = true;
-      } else if( iter->first.compare("private-members") == 0) {
-        private_members_ = true;
-      } else if( iter->first.compare("nocamel") == 0) {
-        nocamel_style_ = true;
-      } else if( iter->first.compare("fullcamel") == 0) {
-        fullcamel_style_ = true;
-      } else if( iter->first.compare("android_legacy") == 0) {
-        android_legacy_ = true;
-      } else if( iter->first.compare("sorted_containers") == 0) {
-        sorted_containers_ = true;
-      } else if( iter->first.compare("java5") == 0) {
-        java5_ = true;
-      } else if( iter->first.compare("reuse-objects") == 0) {
-        reuse_objects_ = true;
-      } else if( iter->first.compare("option_type") == 0) {
-        use_option_type_ = true;
-      } else if( iter->first.compare("generated_annotations") == 0) {
-        if( iter->second.compare("undated") == 0) {
-          undated_generated_annotations_  = true;
-        } else if(iter->second.compare("suppress") == 0) {
-          suppress_generated_annotations_ = true;
-        } else {
-          throw "unknown option java:" + iter->first + "=" + iter->second; 
-        }
-      } else {
-        throw "unknown option java:" + iter->first; 
-      }
-    }
+    iter = parsed_options.find("beans");
+    bean_style_ = (iter != parsed_options.end());
 
+    iter = parsed_options.find("android");
+    android_style_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("private-members");
+    private_members_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("nocamel");
+    nocamel_style_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("fullcamel");
+    fullcamel_style_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("android_legacy");
+    android_legacy_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("sorted_containers");
+    sorted_containers_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("java5");
+    java5_ = (iter != parsed_options.end());
     if (java5_) {
       android_legacy_ = true;
+    }
+
+    iter = parsed_options.find("reuse-objects");
+    reuse_objects_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("option_type");
+    use_option_type_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("generated_annotations");
+    if (iter != parsed_options.end()) {
+      undated_generated_annotations_  = (iter->second.compare("undated") == 0);
+      suppress_generated_annotations_ = (iter->second.compare("suppress") == 0);
+    } else {
+      undated_generated_annotations_  = false;
+      suppress_generated_annotations_ = false;
     }
 
     out_dir_base_ = (bean_style_ ? "gen-javabean" : "gen-java");
@@ -221,8 +213,6 @@ public:
   void generate_java_struct_tuple_scheme(ofstream& out, t_struct* tstruct);
   void generate_java_struct_tuple_reader(ofstream& out, t_struct* tstruct);
   void generate_java_struct_tuple_writer(ofstream& out, t_struct* tstruct);
-
-  void generate_java_scheme_lookup(ofstream& out);
 
   void generate_javax_generated_annotation(ofstream& out);
   /**
@@ -451,7 +441,7 @@ string t_java_generator::java_type_imports() {
 }
 
 string t_java_generator::java_suppressions() {
-  return "@SuppressWarnings({\"cast\", \"rawtypes\", \"serial\", \"unchecked\", \"unused\"})\n";
+  return "@SuppressWarnings({\"cast\", \"rawtypes\", \"serial\", \"unchecked\"})\n";
 }
 
 /**
@@ -705,7 +695,7 @@ string t_java_generator::render_const_value(ofstream& out, t_type* type, t_const
     case t_base_type::TYPE_BOOL:
       render << ((value->get_integer() > 0) ? "true" : "false");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       render << "(byte)" << value->get_integer();
       break;
     case t_base_type::TYPE_I16:
@@ -1540,7 +1530,7 @@ void t_java_generator::generate_java_struct_definition(ofstream& out,
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     t_field* field = (*m_iter);
     std::string field_name = field->get_name();
-    t_type* type = field->get_type()->get_true_type();
+    t_type* type = field->get_type();
     bool can_be_null = type_can_be_null(type);
 
     if (can_be_null) {
@@ -1595,7 +1585,6 @@ void t_java_generator::generate_java_struct_definition(ofstream& out,
 
   generate_java_struct_standard_scheme(out, tstruct, is_result);
   generate_java_struct_tuple_scheme(out, tstruct);
-  generate_java_scheme_lookup(out);
 
   scope_down(out);
   out << endl;
@@ -1645,7 +1634,7 @@ void t_java_generator::generate_java_struct_parcelable(ofstream& out, t_struct* 
     } else if (type_name(t) == "float") {
       indent(out) << "out.writeFloat(" << name << ");" << endl;
     } else if (t->is_enum()) {
-      indent(out) << "out.writeInt(" << name << " != null ? " << name << ".getValue() : -1);" << endl;
+      indent(out) << "out.writeInt(" << name << ".getValue());" << endl;
     } else if (t->is_list()) {
       if (((t_list*)t)->get_elem_type()->get_true_type()->is_struct()) {
         indent(out) << "out.writeTypedList(" << name << ");" << endl;
@@ -1677,7 +1666,7 @@ void t_java_generator::generate_java_struct_parcelable(ofstream& out, t_struct* 
         case t_base_type::TYPE_BOOL:
           indent(out) << "out.writeInt(" << name << " ? 1 : 0);" << endl;
           break;
-        case t_base_type::TYPE_I8:
+        case t_base_type::TYPE_BYTE:
           indent(out) << "out.writeByte(" << name << ");" << endl;
           break;
         case t_base_type::TYPE_DOUBLE:
@@ -1774,7 +1763,7 @@ void t_java_generator::generate_java_struct_parcelable(ofstream& out, t_struct* 
         case t_base_type::TYPE_BOOL:
           indent(out) << prefix << " = (in.readInt()==1);" << endl;
           break;
-        case t_base_type::TYPE_I8:
+        case t_base_type::TYPE_BYTE:
           indent(out) << prefix << " = in.readByte();" << endl;
           break;
         case t_base_type::TYPE_DOUBLE:
@@ -1882,12 +1871,9 @@ void t_java_generator::generate_java_struct_equality(ofstream& out, t_struct* ts
   scope_down(out);
   out << endl;
 
-  const int MUL = 8191; // HashCode multiplier
-  const int B_YES = 131071;
-  const int B_NO = 524287;
   out << indent() << "@Override" << endl << indent() << "public int hashCode() {" << endl;
   indent_up();
-  indent(out) << "int hashCode = 1;" << endl;
+  indent(out) << "List<Object> list = new ArrayList<Object>();" << endl;
 
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     out << endl;
@@ -1897,55 +1883,24 @@ void t_java_generator::generate_java_struct_equality(ofstream& out, t_struct* ts
     bool can_be_null = type_can_be_null(t);
     string name = (*m_iter)->get_name();
 
-    if (is_optional || can_be_null) {
-      indent(out) << "hashCode = hashCode * " << MUL << " + ((" << generate_isset_check(*m_iter)
-                  << ") ? " << B_YES << " : " << B_NO << ");" << endl;
-    }
+    string present = "true";
 
     if (is_optional || can_be_null) {
-      indent(out) << "if (" + generate_isset_check(*m_iter) + ")" << endl;
-      indent_up();
+      present += " && (" + generate_isset_check(*m_iter) + ")";
     }
 
+    indent(out) << "boolean present_" << name << " = " << present << ";" << endl;
+    indent(out) << "list.add(present_" << name << ");" << endl;
+    indent(out) << "if (present_" << name << ")" << endl;
     if (t->is_enum()) {
-      indent(out) << "hashCode = hashCode * " << MUL << " + " << name << ".getValue();" << endl;
-    } else if (t->is_base_type()) {
-      switch(((t_base_type*)t)->get_base()) {
-      case t_base_type::TYPE_STRING:
-        indent(out) << "hashCode = hashCode * " << MUL << " + " << name << ".hashCode();" << endl;
-        break;
-      case t_base_type::TYPE_BOOL:
-        indent(out) << "hashCode = hashCode * " << MUL << " + ((" << name << ") ? "
-                    << B_YES << " : " << B_NO << ");" << endl;
-        break;
-      case t_base_type::TYPE_I8:
-        indent(out) << "hashCode = hashCode * " << MUL << " + (int) (" << name << ");" << endl;
-        break;
-      case t_base_type::TYPE_I16:
-      case t_base_type::TYPE_I32:
-        indent(out) << "hashCode = hashCode * " << MUL << " + " << name << ";" << endl;
-        break;
-      case t_base_type::TYPE_I64:
-      case t_base_type::TYPE_DOUBLE:
-        indent(out) << "hashCode = hashCode * " << MUL << " + org.apache.thrift.TBaseHelper.hashCode(" << name << ");" << endl;
-        break;
-      case t_base_type::TYPE_VOID:
-        throw std::logic_error("compiler error: a struct field cannot be void");
-      default:
-        throw std::logic_error("compiler error: the following base type has no hashcode generator: " +
-               t_base_type::t_base_name(((t_base_type*)t)->get_base()));
-      }
+      indent(out) << "  list.add(" << name << ".getValue());" << endl;
     } else {
-      indent(out) << "hashCode = hashCode * " << MUL << " + " << name << ".hashCode();" << endl;
-    }
-
-    if (is_optional || can_be_null) {
-      indent_down();
+      indent(out) << "  list.add(" << name << ");" << endl;
     }
   }
 
   out << endl;
-  indent(out) << "return hashCode;" << endl;
+  indent(out) << "return list.hashCode();" << endl;
   indent_down();
   indent(out) << "}" << endl << endl;
 }
@@ -1998,7 +1953,7 @@ void t_java_generator::generate_java_struct_reader(ofstream& out, t_struct* tstr
   indent(out) << "public void read(org.apache.thrift.protocol.TProtocol iprot) throws "
                  "org.apache.thrift.TException {" << endl;
   indent_up();
-  indent(out) << "scheme(iprot).read(iprot, this);" << endl;
+  indent(out) << "schemes.get(iprot.getScheme()).getScheme().read(iprot, this);" << endl;
   indent_down();
   indent(out) << "}" << endl << endl;
 }
@@ -2060,7 +2015,7 @@ void t_java_generator::generate_java_struct_writer(ofstream& out, t_struct* tstr
   indent(out) << "public void write(org.apache.thrift.protocol.TProtocol oprot) throws "
                  "org.apache.thrift.TException {" << endl;
   indent_up();
-  indent(out) << "scheme(oprot).write(oprot, this);" << endl;
+  indent(out) << "schemes.get(oprot.getScheme()).getScheme().write(oprot, this);" << endl;
 
   indent_down();
   indent(out) << "}" << endl << endl;
@@ -2079,7 +2034,7 @@ void t_java_generator::generate_java_struct_result_writer(ofstream& out, t_struc
   indent(out) << "public void write(org.apache.thrift.protocol.TProtocol oprot) throws "
                  "org.apache.thrift.TException {" << endl;
   indent_up();
-  indent(out) << "scheme(oprot).write(oprot, this);" << endl;
+  indent(out) << "schemes.get(oprot.getScheme()).getScheme().write(oprot, this);" << endl;
 
   indent_down();
   indent(out) << "  }" << endl << endl;
@@ -2106,23 +2061,12 @@ void t_java_generator::generate_reflection_setters(ostringstream& out,
                                                    t_type* type,
                                                    string field_name,
                                                    string cap_name) {
-  const bool is_binary = type->is_base_type() && ((t_base_type*)type)->is_binary();
   indent(out) << "case " << constant_name(field_name) << ":" << endl;
   indent_up();
   indent(out) << "if (value == null) {" << endl;
   indent(out) << "  unset" << get_cap_name(field_name) << "();" << endl;
   indent(out) << "} else {" << endl;
-  if (is_binary) {
-    indent_up();
-    indent(out) << "if (value instanceof byte[]) {" << endl;
-    indent(out) << "  set" << cap_name << "((byte[])value);" << endl;
-    indent(out) << "} else {" << endl;
-  }
   indent(out) << "  set" << cap_name << "((" << type_name(type, true, false) << ")value);" << endl;
-  if (is_binary) {
-    indent(out) << "}" << endl;
-    indent_down();
-  }
   indent(out) << "}" << endl;
   indent(out) << "break;" << endl << endl;
 
@@ -2614,7 +2558,7 @@ std::string t_java_generator::get_java_type_string(t_type* type) {
     case t_base_type::TYPE_BOOL:
       return "org.apache.thrift.protocol.TType.BOOL";
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "org.apache.thrift.protocol.TType.BYTE";
       break;
     case t_base_type::TYPE_I16:
@@ -2649,7 +2593,7 @@ void t_java_generator::generate_field_value_meta_data(std::ofstream& out, t_type
   out << endl;
   indent_up();
   indent_up();
-  if (type->is_struct() || type->is_xception()) {
+  if (type->is_struct()) {
     indent(out) << "new "
                    "org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType."
                    "STRUCT, " << type_name(type) << ".class";
@@ -3583,7 +3527,7 @@ void t_java_generator::generate_deserialize_field(ofstream& out,
     case t_base_type::TYPE_BOOL:
       out << "readBool();";
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       out << "readByte();";
       break;
     case t_base_type::TYPE_I16:
@@ -3868,7 +3812,7 @@ void t_java_generator::generate_serialize_field(ofstream& out,
       case t_base_type::TYPE_BOOL:
         out << "writeBool(" << name << ");";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "writeByte(" << name << ");";
         break;
       case t_base_type::TYPE_I16:
@@ -4099,7 +4043,7 @@ string t_java_generator::base_type_name(t_base_type* type, bool in_container) {
     }
   case t_base_type::TYPE_BOOL:
     return (in_container ? "Boolean" : "boolean");
-  case t_base_type::TYPE_I8:
+  case t_base_type::TYPE_BYTE:
     return (in_container ? "Byte" : "byte");
   case t_base_type::TYPE_I16:
     return (in_container ? "Short" : "short");
@@ -4139,7 +4083,7 @@ string t_java_generator::declare_field(t_field* tfield, bool init, bool comment)
       case t_base_type::TYPE_BOOL:
         result += " = false";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
       case t_base_type::TYPE_I16:
       case t_base_type::TYPE_I32:
       case t_base_type::TYPE_I64:
@@ -4300,7 +4244,7 @@ string t_java_generator::type_to_enum(t_type* type) {
       return "org.apache.thrift.protocol.TType.STRING";
     case t_base_type::TYPE_BOOL:
       return "org.apache.thrift.protocol.TType.BOOL";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "org.apache.thrift.protocol.TType.BYTE";
     case t_base_type::TYPE_I16:
       return "org.apache.thrift.protocol.TType.I16";
@@ -4637,10 +4581,14 @@ void t_java_generator::generate_field_descs(ofstream& out, t_struct* tstruct) {
 }
 
 void t_java_generator::generate_scheme_map(ofstream& out, t_struct* tstruct) {
-  indent(out) << "private static final SchemeFactory STANDARD_SCHEME_FACTORY = new "
-      << tstruct->get_name() << "StandardSchemeFactory();" << endl;
-  indent(out) << "private static final SchemeFactory TUPLE_SCHEME_FACTORY = new "
-      << tstruct->get_name() << "TupleSchemeFactory();" << endl;
+  indent(out) << "private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new "
+                 "HashMap<Class<? extends IScheme>, SchemeFactory>();" << endl;
+  indent(out) << "static {" << endl;
+  indent(out) << "  schemes.put(StandardScheme.class, new " << tstruct->get_name()
+              << "StandardSchemeFactory());" << endl;
+  indent(out) << "  schemes.put(TupleScheme.class, new " << tstruct->get_name()
+              << "TupleSchemeFactory());" << endl;
+  indent(out) << "}" << endl;
 }
 
 void t_java_generator::generate_field_name_constants(ofstream& out, t_struct* tstruct) {
@@ -4811,7 +4759,7 @@ void t_java_generator::generate_java_struct_clear(std::ofstream& out, t_struct* 
     t_base_type* base_type = (t_base_type*)t;
 
     switch (base_type->get_base()) {
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
     case t_base_type::TYPE_I32:
     case t_base_type::TYPE_I64:
@@ -5160,18 +5108,6 @@ void t_java_generator::generate_java_struct_tuple_scheme(ofstream& out, t_struct
   generate_java_struct_tuple_reader(out, tstruct);
   indent_down();
   out << indent() << "}" << endl << endl;
-}
-
-void t_java_generator::generate_java_scheme_lookup(ofstream& out) {
-  indent(out) << "private static <S extends IScheme> S scheme("
-      << "org.apache.thrift.protocol.TProtocol proto) {" << endl;
-  indent_up();
-  indent(out) << "return (StandardScheme.class.equals(proto.getScheme()) "
-      << "? STANDARD_SCHEME_FACTORY "
-      << ": TUPLE_SCHEME_FACTORY"
-      << ").getScheme();" << endl;
-  indent_down();
-  indent(out) << "}" << endl;
 }
 
 void t_java_generator::generate_javax_generated_annotation(ofstream& out) {

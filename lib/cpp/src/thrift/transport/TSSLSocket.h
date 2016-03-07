@@ -20,12 +20,11 @@
 #ifndef _THRIFT_TRANSPORT_TSSLSOCKET_H_
 #define _THRIFT_TRANSPORT_TSSLSOCKET_H_ 1
 
-// Put this first to avoid WIN32 build failure
-#include <thrift/transport/TSocket.h>
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include <openssl/ssl.h>
 #include <thrift/concurrency/Mutex.h>
+#include <thrift/transport/TSocket.h>
 
 namespace apache {
 namespace thrift {
@@ -43,9 +42,6 @@ enum SSLProtocol {
   TLSv1_2 = 5,  // Supports TLSv1_2 or later.
   LATEST  = TLSv1_2
 };
-
-#define TSSL_EINTR 0
-#define TSSL_DATA 1
 
 /**
  * Initialize OpenSSL library.  This function, or some other
@@ -103,35 +99,18 @@ protected:
    */
   TSSLSocket(boost::shared_ptr<SSLContext> ctx);
   /**
-   * Constructor with an interrupt signal.
-   */
-  TSSLSocket(boost::shared_ptr<SSLContext> ctx, boost::shared_ptr<THRIFT_SOCKET> interruptListener);
-  /**
    * Constructor, create an instance of TSSLSocket given an existing socket.
    *
    * @param socket An existing socket
    */
   TSSLSocket(boost::shared_ptr<SSLContext> ctx, THRIFT_SOCKET socket);
   /**
-   * Constructor, create an instance of TSSLSocket given an existing socket that can be interrupted.
-   *
-   * @param socket An existing socket
-   */
-  TSSLSocket(boost::shared_ptr<SSLContext> ctx, THRIFT_SOCKET socket, boost::shared_ptr<THRIFT_SOCKET> interruptListener);
-   /**
    * Constructor.
    *
    * @param host  Remote host name
    * @param port  Remote port number
    */
   TSSLSocket(boost::shared_ptr<SSLContext> ctx, std::string host, int port);
-    /**
-	* Constructor with an interrupt signal.
-	*
-	* @param host  Remote host name
-	* @param port  Remote port number
-	*/
-    TSSLSocket(boost::shared_ptr<SSLContext> ctx, std::string host, int port, boost::shared_ptr<THRIFT_SOCKET> interruptListener);
   /**
    * Authorize peer access after SSL handshake completes.
    */
@@ -140,15 +119,6 @@ protected:
    * Initiate SSL handshake if not already initiated.
    */
   void checkHandshake();
-  /**
-   * Waits for an socket or shutdown event.
-   *
-   * @throw TTransportException::INTERRUPTED if interrupted is signaled.
-   *
-   * @return TSSL_EINTR if EINTR happened on the underlying socket
-   *         TSSL_DATA  if data is available on the socket.
-   */
-  unsigned int waitForEvent(bool wantRead);
 
   bool server_;
   SSL* ssl_;
@@ -174,21 +144,11 @@ public:
    */
   virtual boost::shared_ptr<TSSLSocket> createSocket();
   /**
-   * Create an instance of TSSLSocket with a fresh new socket, which is interruptable.
-   */
-  virtual boost::shared_ptr<TSSLSocket> createSocket(boost::shared_ptr<THRIFT_SOCKET> interruptListener);
-  /**
    * Create an instance of TSSLSocket with the given socket.
    *
    * @param socket An existing socket.
    */
   virtual boost::shared_ptr<TSSLSocket> createSocket(THRIFT_SOCKET socket);
-  /**
-   * Create an instance of TSSLSocket with the given socket which is interruptable.
-   *
-   * @param socket An existing socket.
-   */
-  virtual boost::shared_ptr<TSSLSocket> createSocket(THRIFT_SOCKET socket, boost::shared_ptr<THRIFT_SOCKET> interruptListener);
   /**
   * Create an instance of TSSLSocket.
   *
@@ -196,13 +156,6 @@ public:
   * @param port  Remote port to be connected to
   */
   virtual boost::shared_ptr<TSSLSocket> createSocket(const std::string& host, int port);
-  /**
-  * Create an instance of TSSLSocket.
-  *
-  * @param host  Remote host to be connected to
-  * @param port  Remote port to be connected to
-  */
-  virtual boost::shared_ptr<TSSLSocket> createSocket(const std::string& host, int port, boost::shared_ptr<THRIFT_SOCKET> interruptListener);
   /**
    * Set ciphers to be used in SSL handshake process.
    *

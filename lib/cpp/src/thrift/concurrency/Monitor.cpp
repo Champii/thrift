@@ -17,8 +17,6 @@
  * under the License.
  */
 
-#include <thrift/thrift-config.h>
-
 #include <thrift/concurrency/Monitor.h>
 #include <thrift/concurrency/Exception.h>
 #include <thrift/concurrency/Util.h>

@@ -17,5 +17,4 @@
 # under the License.
 #
 
-__all__ = ['fastbinary', 'TBase', 'TBinaryProtocol', 'TCompactProtocol',
-           'TJSONProtocol', 'TProtocol']
+__all__ = ['fastbinary', 'TBase', 'TBinaryProtocol', 'TCompactProtocol', 'TJSONProtocol', 'TProtocol']

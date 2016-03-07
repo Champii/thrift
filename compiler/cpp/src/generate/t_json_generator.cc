@@ -53,19 +53,13 @@ public:
                    const std::map<std::string, std::string>& parsed_options,
                    const std::string& option_string)
     : t_generator(program) {
+    (void)parsed_options;
     (void)option_string;
-    std::map<std::string, std::string>::const_iterator iter;
-
-    should_merge_includes_ = false;
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("merge") == 0) {
-        should_merge_includes_ = true;
-      } else {
-        throw "unknown option json:" + iter->first; 
-      }
-    }
-
     out_dir_base_ = "gen-json";
+
+    std::map<std::string, std::string>::const_iterator iter;
+    iter = parsed_options.find("merge");
+    should_merge_includes_ = (iter != parsed_options.end());
   }
 
   virtual ~t_json_generator() {}
@@ -707,12 +701,8 @@ string t_json_generator::get_type_name(t_type* ttype) {
   if (ttype->is_xception()) {
     return "exception";
   }
-  if (ttype->is_base_type()) {
-    t_base_type* tbasetype = (t_base_type*)ttype;
-    return tbasetype->is_binary() ? "binary" : t_base_type::t_base_name(tbasetype->get_base());
-  }
-
-  return "(unknown)";
+  //if (ttype->is_base_type() && ((t_base_type*)ttype)->is_binary()) {
+  return "binary";
 }
 
 string t_json_generator::get_qualified_name(t_type* ttype) {

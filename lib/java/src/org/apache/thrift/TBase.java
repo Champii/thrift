@@ -27,7 +27,21 @@ import org.apache.thrift.protocol.TProtocol;
  * Generic base interface for generated Thrift objects.
  *
  */
-public interface TBase<T extends TBase<T,F>, F extends TFieldIdEnum> extends Comparable<T>,  TSerializable, Serializable {
+public interface TBase<T extends TBase<?,?>, F extends TFieldIdEnum> extends Comparable<T>,  Serializable {
+
+  /**
+   * Reads the TObject from the given input protocol.
+   *
+   * @param iprot Input protocol
+   */
+  public void read(TProtocol iprot) throws TException;
+
+  /**
+   * Writes the objects out to the protocol
+   *
+   * @param oprot Output protocol
+   */
+  public void write(TProtocol oprot) throws TException;
 
   /**
    * Get the F instance that corresponds to fieldId.
@@ -42,7 +56,7 @@ public interface TBase<T extends TBase<T,F>, F extends TFieldIdEnum> extends Com
   public boolean isSet(F field);
 
   /**
-   * Get a field's value by field variable. Primitive types will be wrapped in
+   * Get a field's value by field variable. Primitive types will be wrapped in 
    * the appropriate "boxed" types.
    *
    * @param field
@@ -57,7 +71,7 @@ public interface TBase<T extends TBase<T,F>, F extends TFieldIdEnum> extends Com
    */
   public void setFieldValue(F field, Object value);
 
-  public T deepCopy();
+  public TBase<T, F> deepCopy();
 
   /**
    * Return to the state of having just been initialized, as though you had just

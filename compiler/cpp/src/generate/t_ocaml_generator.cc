@@ -50,14 +50,8 @@ public:
                     const std::map<std::string, std::string>& parsed_options,
                     const std::string& option_string)
     : t_oop_generator(program) {
+    (void)parsed_options;
     (void)option_string;
-    std::map<std::string, std::string>::const_iterator iter;
-
-    /* no options yet */
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      throw "unknown option ocaml:" + iter->first; 
-    }
-
     out_dir_base_ = "gen-ocaml";
   }
 
@@ -361,7 +355,7 @@ string t_ocaml_generator::render_const_value(t_type* type, t_const_value* value)
     case t_base_type::TYPE_BOOL:
       out << (value->get_integer() > 0 ? "true" : "false");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
       out << value->get_integer();
       break;
@@ -1345,7 +1339,7 @@ void t_ocaml_generator::generate_deserialize_type(ofstream& out, t_type* type) {
     case t_base_type::TYPE_BOOL:
       out << "readBool";
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       out << "readByte";
       break;
     case t_base_type::TYPE_I16:
@@ -1396,9 +1390,9 @@ void t_ocaml_generator::generate_deserialize_container(ofstream& out, t_type* tt
   string con = tmp("_con");
 
   t_field fsize(g_type_i32, size);
-  t_field fktype(g_type_i8, ktype);
-  t_field fvtype(g_type_i8, vtype);
-  t_field fetype(g_type_i8, etype);
+  t_field fktype(g_type_byte, ktype);
+  t_field fvtype(g_type_byte, vtype);
+  t_field fetype(g_type_byte, etype);
 
   out << endl;
   indent_up();
@@ -1486,7 +1480,7 @@ void t_ocaml_generator::generate_serialize_field(ofstream& out, t_field* tfield,
       case t_base_type::TYPE_BOOL:
         out << "writeBool(" << name << ")";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "writeByte(" << name << ")";
         break;
       case t_base_type::TYPE_I16:
@@ -1688,7 +1682,7 @@ string t_ocaml_generator::type_to_enum(t_type* type) {
       return "Protocol.T_STRING";
     case t_base_type::TYPE_BOOL:
       return "Protocol.T_BOOL";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "Protocol.T_BYTE";
     case t_base_type::TYPE_I16:
       return "Protocol.T_I16";
@@ -1729,7 +1723,7 @@ string t_ocaml_generator::render_ocaml_type(t_type* type) {
       return "string";
     case t_base_type::TYPE_BOOL:
       return "bool";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "int";
     case t_base_type::TYPE_I16:
       return "int";

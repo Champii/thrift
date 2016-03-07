@@ -18,20 +18,63 @@
  */
 
 #import "TBinaryProtocol.h"
-#import "TProtocolError.h"
+#import "TProtocolException.h"
+#import "TObjective-C.h"
 
+/* In the modern protocol, version is stored in the high half of an int32.
+ * The low half contains type info. */
+static const uint16_t VERSION_1 = 0x8001;
 
-static SInt32 VERSION_1 = 0x80010000;
-static SInt32 VERSION_MASK = 0xffff0000;
+NS_INLINE size_t
+CheckedCastInt32ToSizeT(int32_t size)
+{
+  if (size < 0) {
+    NSString *reason = [NSString stringWithFormat:
+                        @"%s: refusing to read data with negative size: %"PRId32,
+                        __func__, size];
+    @throw [TProtocolException
+            exceptionWithName: @"TProtocolException"
+            reason: reason];
+  }
+  size_t checkedSize = (size_t)size;
+  return checkedSize;
+}
 
+NS_INLINE int32_t
+CheckedCastSizeTToInt32(size_t size)
+{
+  if (size > INT32_MAX) {
+    NSString *reason = [NSString stringWithFormat:
+                        @"%s: data size exceeds values representable by a 32-bit signed integer: %zu",
+                        __func__, size];
+    @throw [TProtocolException
+            exceptionWithName: @"TProtocolException"
+            reason: reason];
+  }
+  int32_t checkedSize = (int32_t)size;
+  return checkedSize;
+}
 
-static TBinaryProtocolFactory *gSharedFactory = nil;
+NS_INLINE uint8_t
+CheckedCastIntToUInt8(int size)
+{
+  if (size > UINT8_MAX) {
+    NSString *reason = [NSString stringWithFormat:
+                        @"%s: data size exceeds values representable by a 8-bit unsigned integer: %d",
+                        __func__, size];
+    @throw [TProtocolException
+            exceptionWithName: @"TProtocolException"
+            reason: reason];
+  }
+  uint8_t checkedSize = (uint8_t)size;
+  return checkedSize;
+}
 
+static TBinaryProtocolFactory * gSharedFactory = nil;
 
 @implementation TBinaryProtocolFactory
 
-+(TBinaryProtocolFactory *) sharedFactory
-{
++ (TBinaryProtocolFactory *) sharedFactory {
   if (gSharedFactory == nil) {
     gSharedFactory = [[TBinaryProtocolFactory alloc] init];
   }
@@ -39,553 +82,363 @@ static TBinaryProtocolFactory *gSharedFactory = nil;
   return gSharedFactory;
 }
 
--(NSString *) protocolName
-{
-  return @"binary";
-}
-
--(TBinaryProtocol *) newProtocolOnTransport:(id <TTransport>)transport
-{
-  return [[TBinaryProtocol alloc] initWithTransport:transport];
+- (TBinaryProtocol *) newProtocolOnTransport: (id <TTransport>) transport {
+  return [[TBinaryProtocol alloc] initWithTransport: transport];
 }
 
 @end
 
-
-@interface TBinaryProtocol ()
-
-@property(strong, nonatomic) id <TTransport> transport;
-
-@property(assign, nonatomic) BOOL strictRead;
-@property(assign, nonatomic) BOOL strictWrite;
-
-@property(strong, nonatomic) NSString *currentMessageName;
-@property(strong, nonatomic) NSString *currentFieldName;
-
-@end
 
 
 @implementation TBinaryProtocol
 
--(id) initWithTransport:(id <TTransport>)aTransport
+- (id) initWithTransport: (id <TTransport>) transport
 {
-  return [self initWithTransport:aTransport strictRead:NO strictWrite:YES];
+  return [self initWithTransport: transport strictRead: NO strictWrite: YES];
 }
 
--(id) initWithTransport:(id <TTransport>)transport
-             strictRead:(BOOL)strictRead
-            strictWrite:(BOOL)strictWrite
+- (id) initWithTransport: (id <TTransport>) transport
+              strictRead: (BOOL) strictRead
+             strictWrite: (BOOL) strictWrite
 {
   self = [super init];
-  if (self) {
-    _transport = transport;
-    _strictRead = strictRead;
-    _strictWrite = strictWrite;
-  }
+  mTransport = [transport retain_stub];
+  mStrictRead = strictRead;
+  mStrictWrite = strictWrite;
   return self;
 }
 
--(id <TTransport>) transport
+
+- (int32_t) messageSizeLimit
 {
-  return _transport;
-}
-
--(NSString *) readStringBody:(int)size error:(NSError **)error
-{
-  NSMutableData *data = [NSMutableData dataWithLength:size];
-  if (!data) {
-    PROTOCOL_ERROR(nil, Unknown, @"Unable to allocate %d bytes", size);
-  }
-
-  if (![_transport readAll:data.mutableBytes offset:0 length:size error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(nil, error, @"Transport read failed");
-  }
-
-  return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+  return mMessageSizeLimit;
 }
 
 
--(BOOL) readMessageBeginReturningName:(NSString **)name
-                                 type:(SInt32 *)type
-                           sequenceID:(SInt32 *)sequenceID
-                                error:(NSError *__autoreleasing *)error
+- (void) setMessageSizeLimit: (int32_t) sizeLimit
 {
-  SInt32 size;
-  if (![self readI32:&size error:error]) {
-    return NO;
-  }
-  ;
+  mMessageSizeLimit = sizeLimit;
+}
 
+
+- (void) dealloc
+{
+  [mTransport release_stub];
+  [super dealloc_stub];
+}
+
+
+- (id <TTransport>) transport
+{
+  return mTransport;
+}
+
+
+- (NSString *) readStringBody: (int) rawSize
+{
+  size_t size = CheckedCastInt32ToSizeT(rawSize);
+  char * buffer = malloc(size+1);
+  if (!buffer) {
+    @throw [TProtocolException exceptionWithName: @"TProtocolException"
+                                          reason: [NSString stringWithFormat: @"Unable to allocate memory in %s, size: %zu",
+                                                   __PRETTY_FUNCTION__,
+                                                   size]];;
+  }
+  [mTransport readAll: (uint8_t *) buffer offset: 0 length: size];
+  buffer[size] = 0;
+  NSString * result = [NSString stringWithUTF8String: buffer];
+  free(buffer);
+  return result;
+}
+
+
+- (void) readMessageBeginReturningName: (NSString **) name
+                                  type: (int *) type
+                            sequenceID: (int *) sequenceID
+{
+  int32_t size = [self readI32];
   if (size < 0) {
-    int version = size & VERSION_MASK;
+    /* Version (unsigned) is stored in the high halfword. */
+    uint16_t version = (size >> 16) & 0xFFFF;
     if (version != VERSION_1) {
-      PROTOCOL_ERROR(NO, BadVersion, @"Bad message version");
+      NSString *reason = [NSString stringWithFormat:
+                          @"%s: Expected version %"PRIu16", instead found: %"PRIu16,
+                          __func__, VERSION_1, version];
+      @throw [TProtocolException exceptionWithName: @"TProtocolException"
+                                 reason: reason];
     }
     if (type != NULL) {
       *type = size & 0x00FF;
     }
-    NSString *messageName;
-    if (![self readString:&messageName error:error]) {
-      return NO;
-    }
-    if (name != nil) {
-      *name = messageName;
-    }
-  }
-  else {
-
-    if (_strictRead) {
-      PROTOCOL_ERROR(NO, InvalidData, @"Missing message version, old client?");
-    }
-
-    if (_messageSizeLimit > 0 && size > _messageSizeLimit) {
-      PROTOCOL_ERROR(NO, SizeLimit, @"Message exceeeds size limit of %d", (int)size);
-    }
-
-    NSString *messageName = [self readStringBody:size error:error];
-    if (!messageName) {
-      return NO;
-    }
-
+    NSString * messageName = [self readString];
     if (name != NULL) {
       *name = messageName;
     }
-
-    UInt8 messageType;
-    if (![self readByte:&messageType error:error]) {
-      return NO;
+    int seqID = [self readI32];
+    if (sequenceID != NULL) {
+      *sequenceID = seqID;
     }
-
+  } else {
+    if (mStrictRead) {
+      @throw [TProtocolException exceptionWithName: @"TProtocolException"
+                                 reason: @"Missing version in readMessageBegin, old client?"];
+    }
+    if ([self messageSizeLimit] > 0 && size > [self messageSizeLimit]) {
+      @throw [TProtocolException exceptionWithName: @"TProtocolException"
+                                            reason: [NSString stringWithFormat: @"Message too big.  Size limit is: %d Message size is: %d",
+                                                     mMessageSizeLimit,
+                                                     size]];
+    }
+    NSString * messageName = [self readStringBody: size];
+    if (name != NULL) {
+      *name = messageName;
+    }
+    int messageType = [self readByte];
     if (type != NULL) {
       *type = messageType;
     }
+    int seqID = [self readI32];
+    if (sequenceID != NULL) {
+      *sequenceID = seqID;
+    }
   }
-
-  SInt32 seqID;
-  if (![self readI32:&seqID error:error]) {
-    return NO;
-  }
-  if (sequenceID != NULL) {
-    *sequenceID = seqID;
-  }
-
-  return YES;
 }
 
 
--(BOOL) readMessageEnd:(NSError *__autoreleasing *)error
+- (void) readMessageEnd {}
+
+
+- (void) readStructBeginReturningName: (NSString **) name
 {
-  return YES;
-}
-
-
--(BOOL) readStructBeginReturningName:(NSString *__autoreleasing *)name error:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
-
--(BOOL) readStructEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
-
--(BOOL) readFieldBeginReturningName:(NSString *__autoreleasing *)name
-                               type:(SInt32 *)fieldType
-                            fieldID:(SInt32 *)fieldID
-                              error:(NSError *__autoreleasing *)error
-{
-  if (name != nil) {
+  if (name != NULL) {
     *name = nil;
   }
+}
 
-  UInt8 ft;
-  if (![self readByte:&ft error:error]) {
-    return NO;
+
+- (void) readStructEnd {}
+
+
+- (void) readFieldBeginReturningName: (NSString **) name
+                                type: (int *) fieldType
+                             fieldID: (int *) fieldID
+{
+  if (name != NULL) {
+    *name = nil;
   }
+  int ft = [self readByte];
   if (fieldType != NULL) {
     *fieldType = ft;
   }
-  if (ft != TTypeSTOP) {
-    SInt16 fid;
-    if (![self readI16:&fid error:error]) {
-      return NO;
-    }
+  if (ft != TType_STOP) {
+    int fid = [self readI16];
     if (fieldID != NULL) {
       *fieldID = fid;
     }
   }
-  return YES;
 }
 
 
--(BOOL) readFieldEnd:(NSError *__autoreleasing *)error
+- (void) readFieldEnd {}
+
+
+- (int32_t) readI32
 {
-  return YES;
-}
-
-
--(BOOL) readString:(NSString *__autoreleasing *)value error:(NSError *__autoreleasing *)error
-{
-  SInt32 size;
-  if (![self readI32:&size error:error]) {
-    return NO;
-  }
-
-  NSString *string = [self readStringBody:size error:error];
-  if (!string) {
-    return NO;
-  }
-
-  *value = string;
-
-  return YES;
-}
-
-
--(BOOL) readBool:(BOOL *)value error:(NSError *__autoreleasing *)error
-{
-  UInt8 byte;
-  if (![self readByte:&byte error:error]) {
-    return NO;
-  }
-
-  *value = byte == 1;
-
-  return YES;
-}
-
-
--(BOOL) readByte:(UInt8 *)value error:(NSError *__autoreleasing *)error
-{
-  UInt8 buff[1];
-  if (![_transport readAll:buff offset:0 length:1 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-  }
-
-  *value = buff[0];
-
-  return YES;
-}
-
-
--(BOOL) readI16:(SInt16 *)value error:(NSError *__autoreleasing *)error
-{
-  UInt8 buff[2];
-  if (![_transport readAll:buff offset:0 length:2 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-  }
-
-  *value =
-    ((SInt16)(buff[0] & 0xff) << 8) |
-    ((SInt16)(buff[1] & 0xff));
-
-  return YES;
-}
-
-
--(BOOL) readI32:(SInt32 *)value error:(NSError *__autoreleasing *)error
-{
-  UInt8 i32rd[4];
-  if (![_transport readAll:i32rd offset:0 length:4 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-  }
-
-  *value =
+  uint8_t i32rd[4];
+  [mTransport readAll: i32rd offset: 0 length: 4];
+  return
     ((i32rd[0] & 0xff) << 24) |
     ((i32rd[1] & 0xff) << 16) |
     ((i32rd[2] & 0xff) <<  8) |
     ((i32rd[3] & 0xff));
-
-  return YES;
 }
 
 
--(BOOL) readI64:(SInt64 *)value error:(NSError *__autoreleasing *)error
+- (NSString *) readString
 {
-  UInt8 buff[8];
-  if (![_transport readAll:buff offset:0 length:8 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-  }
-
-  *value =
-    ((SInt64)(buff[0] & 0xff) << 56) |
-    ((SInt64)(buff[1] & 0xff) << 48) |
-    ((SInt64)(buff[2] & 0xff) << 40) |
-    ((SInt64)(buff[3] & 0xff) << 32) |
-    ((SInt64)(buff[4] & 0xff) << 24) |
-    ((SInt64)(buff[5] & 0xff) << 16) |
-    ((SInt64)(buff[6] & 0xff) <<  8) |
-    ((SInt64)(buff[7] & 0xff));
-
-  return YES;
+  int32_t size = [self readI32];
+  return [self readStringBody: size];
 }
 
 
--(BOOL) readDouble:(double *)value error:(NSError *__autoreleasing *)error
+- (BOOL) readBool
+{
+  return [self readByte] == 1;
+}
+
+- (uint8_t) readByte
+{
+  uint8_t myByte;
+  [mTransport readAll: &myByte offset: 0 length: 1];
+  return myByte;
+}
+
+- (short) readI16
+{
+  uint8_t buff[2];
+  [mTransport readAll: buff offset: 0 length: 2];
+  return (short)
+    (((buff[0] & 0xff) << 8) |
+     ((buff[1] & 0xff)));
+}
+
+- (int64_t) readI64
+{
+  uint8_t i64rd[8];
+  [mTransport readAll: i64rd offset: 0 length: 8];
+  return
+    ((int64_t)(i64rd[0] & 0xff) << 56) |
+    ((int64_t)(i64rd[1] & 0xff) << 48) |
+    ((int64_t)(i64rd[2] & 0xff) << 40) |
+    ((int64_t)(i64rd[3] & 0xff) << 32) |
+    ((int64_t)(i64rd[4] & 0xff) << 24) |
+    ((int64_t)(i64rd[5] & 0xff) << 16) |
+    ((int64_t)(i64rd[6] & 0xff) <<  8) |
+    ((int64_t)(i64rd[7] & 0xff));
+}
+
+- (double) readDouble
 {
   // FIXME - will this get us into trouble on PowerPC?
-  return [self readI64:(SInt64 *)value error:error];
+  int64_t ieee754 = [self readI64];
+  return *((double *) &ieee754);
 }
 
 
--(BOOL) readBinary:(NSData *__autoreleasing *)value error:(NSError *__autoreleasing *)error
+- (NSData *) readBinary
 {
-  SInt32 size;
-  if (![self readI32:&size error:error]) {
-    return NO;
+  int32_t size = [self readI32];
+  size_t binarySize = CheckedCastInt32ToSizeT(size);
+  uint8_t * buff = malloc(binarySize);
+  if (buff == NULL) {
+    @throw [TProtocolException
+             exceptionWithName: @"TProtocolException"
+             reason: [NSString stringWithFormat: @"Out of memory.  Unable to allocate %d bytes trying to read binary data.",
+                               size]];
   }
-
-  NSMutableData *data = [NSMutableData dataWithLength:size];
-  if (!data) {
-    PROTOCOL_ERROR(NO, Unknown, @"Unable to allocate %d bytes", (int)size);
-  }
-
-  if (![_transport readAll:data.mutableBytes offset:0 length:size error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-  }
-
-  *value = data;
-
-  return YES;
+  [mTransport readAll: buff offset: 0 length: binarySize];
+  return [NSData dataWithBytesNoCopy: buff length: binarySize];
 }
 
 
--(BOOL) readMapBeginReturningKeyType:(SInt32 *)keyType
-                           valueType:(SInt32 *)valueType
-                                size:(SInt32 *)size
-                               error:(NSError *__autoreleasing *)error
+- (void) readMapBeginReturningKeyType: (int *) keyType
+                            valueType: (int *) valueType
+                                 size: (int *) size
 {
-  UInt8 kt;
-  if (![self readByte:&kt error:error]) {
-    return NO;
-  }
-
-  UInt8 vt;
-  if (![self readByte:&vt error:error]) {
-    return NO;
-  }
-
-  SInt32 s;
-  if (![self readI32:&s error:error]) {
-    return NO;
-  }
-
+  int kt = [self readByte];
+  int vt = [self readByte];
+  int s = [self readI32];
   if (keyType != NULL) {
     *keyType = kt;
   }
-
   if (valueType != NULL) {
     *valueType = vt;
   }
-
   if (size != NULL) {
     *size = s;
   }
-
-  return YES;
 }
 
+- (void) readMapEnd {}
 
--(BOOL) readMapEnd:(NSError *__autoreleasing *)error
+
+- (void) readSetBeginReturningElementType: (int *) elementType
+                                     size: (int *) size
 {
-  return YES;
-}
-
-
--(BOOL) readSetBeginReturningElementType:(SInt32 *)elementType
-                                    size:(SInt32 *)size
-                                   error:(NSError *__autoreleasing *)error
-{
-  UInt8 et;
-  if (![self readByte:&et error:error]) {
-    return NO;
-  }
-
-  SInt32 s;
-  if (![self readI32:&s error:error]) {
-    return NO;
-  }
-
+  int et = [self readByte];
+  int s = [self readI32];
   if (elementType != NULL) {
     *elementType = et;
   }
-
   if (size != NULL) {
     *size = s;
   }
-
-  return YES;
 }
 
 
--(BOOL) readSetEnd:(NSError *__autoreleasing *)error
+- (void) readSetEnd {}
+
+
+- (void) readListBeginReturningElementType: (int *) elementType
+                                      size: (int *) size
 {
-  return YES;
-}
-
-
--(BOOL) readListBeginReturningElementType:(SInt32 *)elementType
-                                     size:(SInt32 *)size
-                                    error:(NSError *__autoreleasing *)error
-{
-  UInt8 et;
-  if (![self readByte:&et error:error]) {
-    return NO;
-  }
-
-  SInt32 s;
-  if (![self readI32:&s error:error]) {
-    return NO;
-  }
-
+  int et = [self readByte];
+  int s = [self readI32];
   if (elementType != NULL) {
     *elementType = et;
   }
-
   if (size != NULL) {
     *size = s;
   }
-
-  return YES;
 }
 
 
--(BOOL) readListEnd:(NSError *__autoreleasing *)error
+- (void) readListEnd {}
+
+
+- (void) writeByte: (uint8_t) value
 {
-  return YES;
+  [mTransport write: &value offset: 0 length: 1];
 }
 
 
-
--(BOOL) writeMessageBeginWithName:(NSString *)name
-                             type:(SInt32)messageType
-                       sequenceID:(SInt32)sequenceID
-                            error:(NSError *__autoreleasing *)error
+- (void) writeMessageBeginWithName: (NSString *) name
+                              type: (int) messageType
+                        sequenceID: (int) sequenceID
 {
-  if (_strictWrite) {
-
-    int version = VERSION_1 | messageType;
-
-    if (![self writeI32:version error:error]) {
-      return NO;
-    }
-
-    if (![self writeString:name error:error]) {
-      return NO;
-    }
-
-    if (![self writeI32:sequenceID error:error]) {
-      return NO;
-    }
+  if (mStrictWrite) {
+    int version = (VERSION_1 << 16) | messageType;
+    [self writeI32: version];
+    [self writeString: name];
+    [self writeI32: sequenceID];
+  } else {
+    [self writeString: name];
+    [self writeByte: CheckedCastIntToUInt8(messageType)];
+    [self writeI32: sequenceID];
   }
-  else {
-
-    if (![self writeString:name error:error]) {
-      return NO;
-    }
-
-    if (![self writeByte:messageType error:error]) {
-      return NO;
-    }
-
-    if (![self writeI32:sequenceID error:error]) {
-      return NO;
-    }
-  }
-
-  _currentMessageName = name;
-
-  return YES;
 }
 
 
--(BOOL) writeMessageEnd:(NSError *__autoreleasing *)error
+- (void) writeMessageEnd {}
+
+
+- (void) writeStructBeginWithName: (NSString *) name {}
+
+
+- (void) writeStructEnd {}
+
+
+- (void) writeFieldBeginWithName: (NSString *) name
+                            type: (int) fieldType
+                         fieldID: (int) fieldID
 {
-  _currentMessageName = nil;
-  return YES;
+  [self writeByte: CheckedCastIntToUInt8(fieldType)];
+  [self writeI16: CheckedCastIntToUInt8(fieldID)];
 }
 
 
--(BOOL) writeStructBeginWithName:(NSString *)name
-                           error:(NSError *__autoreleasing *)error
+- (void) writeI32: (int32_t) value
 {
-  return YES;
-}
-
-
--(BOOL) writeStructEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
-
--(BOOL) writeFieldBeginWithName:(NSString *)name
-                           type:(SInt32)fieldType
-                        fieldID:(SInt32)fieldID
-                          error:(NSError *__autoreleasing *)error
-{
-  if (![self writeByte:fieldType error:error]) {
-    return NO;
-  }
-
-  if (![self writeI16:fieldID error:error]) {
-    return NO;
-  }
-
-  return YES;
-}
-
-
--(BOOL) writeBool:(BOOL)value error:(NSError *__autoreleasing *)error
-{
-  return [self writeByte:(value ? 1 : 0) error:error];
-}
-
-
--(BOOL) writeByte:(UInt8)value error:(NSError *__autoreleasing *)error
-{
-  if (![_transport write:&value offset:0 length:1 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-  return YES;
-}
-
-
--(BOOL) writeI16:(short)value error:(NSError *__autoreleasing *)error
-{
-  UInt8 buff[2];
-  buff[0] = 0xff & (value >> 8);
-  buff[1] = 0xff & value;
-
-  if (![_transport write:buff offset:0 length:2 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-
-  return YES;
-}
-
-
--(BOOL) writeI32:(SInt32)value error:(NSError *__autoreleasing *)error
-{
-  UInt8 buff[4];
+  uint8_t buff[4];
   buff[0] = 0xFF & (value >> 24);
   buff[1] = 0xFF & (value >> 16);
   buff[2] = 0xFF & (value >> 8);
   buff[3] = 0xFF & value;
+  [mTransport write: buff offset: 0 length: 4];
+}
 
-  if (![_transport write:buff offset:0 length:4 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-
-  return YES;
+- (void) writeI16: (short) value
+{
+  uint8_t buff[2];
+  buff[0] = 0xff & (value >> 8);
+  buff[1] = 0xff & value;
+  [mTransport write: buff offset: 0 length: 2];
 }
 
 
--(BOOL) writeI64:(SInt64)value error:(NSError *__autoreleasing *)error
+- (void) writeI64: (int64_t) value
 {
-  UInt8 buff[8];
+  uint8_t buff[8];
   buff[0] = 0xFF & (value >> 56);
   buff[1] = 0xFF & (value >> 48);
   buff[2] = 0xFF & (value >> 40);
@@ -594,147 +447,84 @@ static TBinaryProtocolFactory *gSharedFactory = nil;
   buff[5] = 0xFF & (value >> 16);
   buff[6] = 0xFF & (value >> 8);
   buff[7] = 0xFF & value;
-
-  if (![_transport write:buff offset:0 length:8 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-
-  return YES;
+  [mTransport write: buff offset: 0 length: 8];
 }
 
-
--(BOOL) writeDouble:(double)value error:(NSError *__autoreleasing *)error
+- (void) writeDouble: (double) value
 {
-  // FIXME - will this get us in trouble on PowerPC?
-  if (![self writeI64:*(SInt64 *)&value error:error]) {
-    return NO;
-  }
-
-  return YES;
+  // spit out IEEE 754 bits - FIXME - will this get us in trouble on
+  // PowerPC?
+  [self writeI64: *((int64_t *) &value)];
 }
 
 
--(BOOL) writeString:(NSString *)value error:(NSError *__autoreleasing *)error
+- (void) writeString: (NSString *) value
 {
   if (value != nil) {
-
-    const char *utf8Bytes = [value UTF8String];
-
-    SInt32 length = (SInt32)strlen(utf8Bytes);
-    if (![self writeI32:length error:error]) {
-      return NO;
-    }
-
-    if (![_transport write:(UInt8 *)utf8Bytes offset:0 length:(int)length error:error]) {
-      PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-    }
-
-  }
-  else {
-
+    const char * utf8Bytes = [value UTF8String];
+    size_t length = strlen(utf8Bytes);
+    int32_t size = CheckedCastSizeTToInt32(length);
+    [self writeI32: size];
+    [mTransport write: (uint8_t *) utf8Bytes offset: 0 length: length];
+  } else {
     // instead of crashing when we get null, let's write out a zero
     // length string
-    if (![self writeI32:0 error:error]) {
-      return NO;
-    }
-
+    [self writeI32: 0];
   }
-
-  return YES;
 }
 
 
--(BOOL) writeBinary:(NSData *)data error:(NSError *__autoreleasing *)error
+- (void) writeBinary: (NSData *) data
 {
-  if (![self writeI32:(SInt32)data.length error:error]) {
-    return NO;
-  }
+  int32_t size = CheckedCastSizeTToInt32([data length]);
+  [self writeI32: size];
+  [mTransport write: [data bytes] offset: 0 length: [data length]];
+}
 
-  if (![_transport write:data.bytes offset:0 length:(UInt32)data.length error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-
-  return YES;
+- (void) writeFieldStop
+{
+  [self writeByte: TType_STOP];
 }
 
 
--(BOOL) writeFieldStop:(NSError *__autoreleasing *)error
-{
-  if (![self writeByte:TTypeSTOP error:error]) {
-    return NO;
-  }
+- (void) writeFieldEnd {}
 
-  return YES;
+
+- (void) writeMapBeginWithKeyType: (int) keyType
+                        valueType: (int) valueType
+                             size: (int) size
+{
+  [self writeByte: CheckedCastIntToUInt8(keyType)];
+  [self writeByte: CheckedCastIntToUInt8(valueType)];
+  [self writeI32: size];
 }
 
+- (void) writeMapEnd {}
 
--(BOOL) writeFieldEnd:(NSError *__autoreleasing *)error
+
+- (void) writeSetBeginWithElementType: (int) elementType
+                                 size: (int) size
 {
-  return YES;
+  [self writeByte: CheckedCastIntToUInt8(elementType)];
+  [self writeI32: size];
 }
 
+- (void) writeSetEnd {}
 
--(BOOL) writeMapBeginWithKeyType:(SInt32)keyType
-                       valueType:(SInt32)valueType
-                            size:(SInt32)size
-                           error:(NSError *__autoreleasing *)error
+
+- (void) writeListBeginWithElementType: (int) elementType
+                                  size: (int) size
 {
-  if (![self writeByte:keyType error:error]) {
-    return NO;
-  }
-  if (![self writeByte:valueType error:error]) {
-    return NO;
-  }
-  if (![self writeI32:(int)size error:error]) {
-    return NO;
-  }
-  return YES;
+  [self writeByte: CheckedCastIntToUInt8(elementType)];
+  [self writeI32: size];
 }
 
+- (void) writeListEnd {}
 
--(BOOL) writeMapEnd:(NSError *__autoreleasing *)error
+
+- (void) writeBool: (BOOL) value
 {
-  return YES;
-}
-
-
--(BOOL) writeSetBeginWithElementType:(SInt32)elementType
-                                size:(SInt32)size
-                               error:(NSError *__autoreleasing *)error
-{
-  if (![self writeByte:elementType error:error]) {
-    return NO;
-  }
-  if (![self writeI32:size error:error]) {
-    return NO;
-  }
-  return YES;
-}
-
-
--(BOOL) writeSetEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
-
--(BOOL) writeListBeginWithElementType:(SInt32)elementType
-                                 size:(SInt32)size
-                                error:(NSError *__autoreleasing *)error
-{
-  if (![self writeByte:elementType error:error]) {
-    return NO;
-  }
-  if (![self writeI32:size error:error]) {
-    return NO;
-  }
-  return YES;
-}
-
-
--(BOOL) writeListEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
+  [self writeByte: (value ? 1 : 0)];
 }
 
 @end

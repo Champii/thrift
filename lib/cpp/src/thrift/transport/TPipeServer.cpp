@@ -43,7 +43,7 @@ using boost::shared_ptr;
 class TPipeServerImpl : boost::noncopyable {
 public:
   TPipeServerImpl() {}
-  virtual ~TPipeServerImpl() {}
+  virtual ~TPipeServerImpl() = 0 {}
   virtual void interrupt() = 0;
   virtual boost::shared_ptr<TTransport> acceptImpl() = 0;
 
@@ -351,17 +351,12 @@ bool TNamedPipeServer::createNamedPipe(const TAutoCrit & /*lockProof*/) {
                                      0,                    // client time-out
                                      &sa));                // security attributes
 
-  DWORD lastError = GetLastError();
-  LocalFree(sd);
-  LocalFree(acl);
-  FreeSid(everyone_sid);
-
   if (hPipe.h == INVALID_HANDLE_VALUE) {
     Pipe_.reset();
-    GlobalOutput.perror("TPipeServer::TCreateNamedPipe() GLE=", lastError);
+    GlobalOutput.perror("TPipeServer::TCreateNamedPipe() GLE=", GetLastError());
     throw TTransportException(TTransportException::NOT_OPEN,
                               "TCreateNamedPipe() failed",
-							  lastError);
+                              GetLastError());
     return false;
   }
 

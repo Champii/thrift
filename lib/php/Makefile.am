@@ -112,13 +112,11 @@ phptransport_DATA = \
 phptypedir = $(phpdir)/Type
 phptype_DATA = \
   lib/Thrift/Type/TMessageType.php \
-  lib/Thrift/Type/TType.php \
-  lib/Thrift/Type/TConstant.php
+  lib/Thrift/Type/TType.php
 
 EXTRA_DIST = \
   lib \
   src/autoload.php \
-  src/ext/thrift_protocol/config.m4 \
   src/ext/thrift_protocol/config.w32 \
   src/ext/thrift_protocol/php_thrift_protocol.cpp \
   src/ext/thrift_protocol/php_thrift_protocol.h \

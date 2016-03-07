@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
 
 #
 # Licensed to the Apache Software Foundation (ASF) under one
@@ -46,13 +45,13 @@ ARGV.each do|a|
   elsif a.start_with?("--transport")
     $transport = a.split("=")[1]
   elsif a.start_with?("--port")
-    $port = a.split("=")[1].to_i
+    $port = a.split("=")[1].to_i 
   end
 end
 ARGV=[]
 
 class SimpleClientTest < Test::Unit::TestCase
-  def setup
+  def setup 
     unless @socket
       @socket   = Thrift::Socket.new($host, $port)
       if $transport == "buffered"
@@ -78,11 +77,7 @@ class SimpleClientTest < Test::Unit::TestCase
       @socket.open
     end
   end
-
-  def teardown
-    @socket.close
-  end
-
+  
   def test_void
     p 'test_void'
     @client.testVoid()
@@ -90,41 +85,7 @@ class SimpleClientTest < Test::Unit::TestCase
 
   def test_string
     p 'test_string'
-    test_string =
-      'quote: \" backslash:' +
-      ' forwardslash-escaped: \/ ' +
-      ' backspace: \b formfeed: \f newline: \n return: \r tab: ' +
-      ' now-all-of-them-together: "\\\/\b\n\r\t' +
-      ' now-a-bunch-of-junk: !@#$%&()(&%$#{}{}<><><' +
-      ' char-to-test-json-parsing: ]] \"]] \\" }}}{ [[[ '
-    test_string = "Afrikaans, Alemannisch, Aragonés, العربية, مصرى, " +
-      "Asturianu, Aymar aru, Azərbaycan, Башҡорт, Boarisch, Žemaitėška, " +
-      "Беларуская, Беларуская (тарашкевіца), Български, Bamanankan, " +
-      "বাংলা, Brezhoneg, Bosanski, Català, Mìng-dĕ̤ng-ngṳ̄, Нохчийн, " +
-      "Cebuano, ᏣᎳᎩ, Česky, Словѣ́ньскъ / ⰔⰎⰑⰂⰡⰐⰠⰔⰍⰟ, Чӑвашла, Cymraeg, " +
-      "Dansk, Zazaki, ދިވެހިބަސް, Ελληνικά, Emiliàn e rumagnòl, English, " +
-      "Esperanto, Español, Eesti, Euskara, فارسی, Suomi, Võro, Føroyskt, " +
-      "Français, Arpetan, Furlan, Frysk, Gaeilge, 贛語, Gàidhlig, Galego, " +
-      "Avañe'ẽ, ગુજરાતી, Gaelg, עברית, हिन्दी, Fiji Hindi, Hrvatski, " +
-      "Kreyòl ayisyen, Magyar, Հայերեն, Interlingua, Bahasa Indonesia, " +
-      "Ilokano, Ido, Íslenska, Italiano, 日本語, Lojban, Basa Jawa, " +
-      "ქართული, Kongo, Kalaallisut, ಕನ್ನಡ, 한국어, Къарачай-Малкъар, " +
-      "Ripoarisch, Kurdî, Коми, Kernewek, Кыргызча, Latina, Ladino, " +
-      "Lëtzebuergesch, Limburgs, Lingála, ລາວ, Lietuvių, Latviešu, Basa " +
-      "Banyumasan, Malagasy, Македонски, മലയാളം, मराठी, مازِرونی, Bahasa " +
-      "Melayu, Nnapulitano, Nedersaksisch, नेपाल भाषा, Nederlands, ‪" +
-      "Norsk (nynorsk)‬, ‪Norsk (bokmål)‬, Nouormand, Diné bizaad, " +
-      "Occitan, Иронау, Papiamentu, Deitsch, Polski, پنجابی, پښتو, " +
-      "Norfuk / Pitkern, Português, Runa Simi, Rumantsch, Romani, Română, " +
-      "Русский, Саха тыла, Sardu, Sicilianu, Scots, Sámegiella, Simple " +
-      "English, Slovenčina, Slovenščina, Српски / Srpski, Seeltersk, " +
-      "Svenska, Kiswahili, தமிழ், తెలుగు, Тоҷикӣ, ไทย, Türkmençe, Tagalog, " +
-      "Türkçe, Татарча/Tatarça, Українська, اردو, Tiếng Việt, Volapük, " +
-      "Walon, Winaray, 吴语, isiXhosa, ייִדיש, Yorùbá, Zeêuws, 中文, " +
-      "Bân-lâm-gú, 粵語"
-
-    result_string = @client.testString(test_string)
-    assert_equal(test_string, result_string.force_encoding(Encoding::UTF_8))
+    assert_equal(@client.testString('string'), 'string')
   end
 
   def test_bool
@@ -156,7 +117,7 @@ class SimpleClientTest < Test::Unit::TestCase
 
   def test_double
     p 'test_double'
-    val = 3.14159265358979323846
+    val = 3.14
     assert_equal(@client.testDouble(val), val)
     assert_equal(@client.testDouble(-val), -val)
     assert_kind_of(Float, @client.testDouble(val))
@@ -164,11 +125,11 @@ class SimpleClientTest < Test::Unit::TestCase
 
   def test_binary
     p 'test_binary'
-    val = (0...256).reverse_each.to_a
+    val = [42, 0, 142, 242]
     ret = @client.testBinary(val.pack('C*'))
     assert_equal(val, ret.bytes.to_a)
   end
-
+  
   def test_map
     p 'test_map'
     val = {1 => 1, 2 => 2, 3 => 3}
@@ -344,9 +305,9 @@ class SimpleClientTest < Test::Unit::TestCase
   def test_oneway
     p 'test_oneway'
     time1 = Time.now.to_f
-    @client.testOneway(1)
+    @client.testOneway(3)
     time2 = Time.now.to_f
-    assert_operator (time2-time1), :<, 0.1
+    assert_equal((time2-time1)*1000000<400, true)
   end
 
 end

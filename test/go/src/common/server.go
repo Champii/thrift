@@ -37,7 +37,7 @@ func init() {
 	flag.BoolVar(&debugServerProtocol, "debug_server_protocol", false, "turn server protocol trace on")
 }
 
-func GetServerParams(
+func StartServer(
 	host string,
 	port int64,
 	domain_socket string,
@@ -45,9 +45,8 @@ func GetServerParams(
 	protocol string,
 	ssl bool,
 	certPath string,
-	handler thrifttest.ThriftTest) (thrift.TProcessor, thrift.TServerTransport, thrift.TTransportFactory, thrift.TProtocolFactory, error) {
+	handler thrifttest.ThriftTest) (srv *thrift.TSimpleServer, err error) {
 
-	var err error
 	hostPort := fmt.Sprintf("%s:%d", host, port)
 
 	var protocolFactory thrift.TProtocolFactory
@@ -61,7 +60,7 @@ func GetServerParams(
 	case "binary":
 		protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
 	default:
-		return nil, nil, nil, nil, fmt.Errorf("Invalid protocol specified %s", protocol)
+		return nil, fmt.Errorf("Invalid protocol specified %s", protocol)
 	}
 	if debugServerProtocol {
 		protocolFactory = thrift.NewTDebugProtocolFactory(protocolFactory, "server:")
@@ -71,7 +70,7 @@ func GetServerParams(
 	if ssl {
 		cfg := new(tls.Config)
 		if cert, err := tls.LoadX509KeyPair(certPath+"/server.crt", certPath+"/server.key"); err != nil {
-			return nil, nil, nil, nil, err
+			return nil, err
 		} else {
 			cfg.Certificates = append(cfg.Certificates, cert)
 		}
@@ -84,15 +83,18 @@ func GetServerParams(
 		}
 	}
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 
 	var transportFactory thrift.TTransportFactory
 
 	switch transport {
 	case "http":
-		// there is no such factory, and we don't need any
-		transportFactory = nil
+		return nil, fmt.Errorf("Http server transport is not supported")
+		// trans, err = thrift.NewTHttpClient(fmt.Sprintf("http://%s/service", hostPort))
+		// if err != nil {
+		// 	return nil, err
+		// }
 	case "framed":
 		transportFactory = thrift.NewTTransportFactory()
 		transportFactory = thrift.NewTFramedTransportFactory(transportFactory)
@@ -103,9 +105,13 @@ func GetServerParams(
 	case "":
 		transportFactory = thrift.NewTTransportFactory()
 	default:
-		return nil, nil, nil, nil, fmt.Errorf("Invalid transport specified %s", transport)
+		return nil, fmt.Errorf("Invalid transport specified %s", transport)
 	}
 	processor := thrifttest.NewThriftTestProcessor(handler)
-
-	return processor, serverTransport, transportFactory, protocolFactory, nil
+	server := thrift.NewTSimpleServer4(processor, serverTransport, transportFactory, protocolFactory)
+	if err = server.Listen(); err != nil {
+		return
+	}
+	go server.AcceptLoop()
+	return server, nil
 }

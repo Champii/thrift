@@ -20,14 +20,10 @@
 #import <Foundation/Foundation.h>
 #import "TTransport.h"
 
-NS_ASSUME_NONNULL_BEGIN
+@interface TFramedTransport : NSObject <TTransport> {
+    id <TTransport> mTransport;
+}
 
-
-@interface TFramedTransport : NSObject <TTransport>
-
--(id) initWithTransport:(id <TTransport>)transport;
+- (id) initWithTransport: (id <TTransport>) transport;
 
 @end
-
-
-NS_ASSUME_NONNULL_END

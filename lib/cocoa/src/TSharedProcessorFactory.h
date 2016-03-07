@@ -20,9 +20,8 @@
 #import <Foundation/Foundation.h>
 #import "TProcessorFactory.h"
 
-
-@interface TSharedProcessorFactory : NSObject <TProcessorFactory>
-
--(id) initWithSharedProcessor:(id<TProcessor>)sharedProcessor;
-
+@interface TSharedProcessorFactory : NSObject <TProcessorFactory> {
+  id<TProcessor> mSharedProcessor;
+}
+- (id) initWithSharedProcessor: (id<TProcessor>) sharedProcessor;
 @end

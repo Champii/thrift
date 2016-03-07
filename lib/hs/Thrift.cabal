@@ -18,7 +18,7 @@
 --
 
 Name:           thrift
-Version:        1.0.0-dev
+Version:        0.9.3
 Cabal-Version:  >= 1.8
 License:        OtherLicense
 Category:       Foreign
@@ -40,7 +40,7 @@ Library
   Hs-Source-Dirs:
     src
   Build-Depends:
-    base >= 4, base < 5, containers, ghc-prim, attoparsec, binary, bytestring >= 0.10, base64-bytestring, hashable, HTTP, text, unordered-containers >= 0.2.6, vector, QuickCheck >= 2.8.2, split
+    base >= 4, base < 5, containers, ghc-prim, attoparsec, binary, bytestring >= 0.10, hashable, HTTP, text, unordered-containers, vector, QuickCheck, split
   if flag(network-uri)
      build-depends: network-uri >= 2.6, network >= 2.6
   else
@@ -59,7 +59,6 @@ Library
     Thrift.Transport.Handle,
     Thrift.Transport.HttpClient,
     Thrift.Transport.IOBuffer,
-    Thrift.Transport.Memory,
     Thrift.Types
   Extensions:
     DeriveDataTypeable,
@@ -71,10 +70,3 @@ Library
     RecordWildCards,
     ScopedTypeVariables,
     TypeSynonymInstances
-
-Test-Suite spec
-  Type: exitcode-stdio-1.0
-  Hs-Source-Dirs: test
-  Ghc-Options: -Wall
-  main-is: Spec.hs
-  Build-Depends: base, thrift, hspec, QuickCheck >= 2.8.2, bytestring >= 0.10, unordered-containers >= 0.2.6

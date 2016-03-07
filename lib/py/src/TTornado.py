@@ -18,11 +18,13 @@
 #
 
 from __future__ import absolute_import
-import logging
 import socket
 import struct
 
-from .transport.TTransport import TTransportException, TTransportBase, TMemoryBuffer
+import logging
+logger = logging.getLogger(__name__)
+
+from thrift.transport.TTransport import TTransportException, TTransportBase, TMemoryBuffer
 
 from io import BytesIO
 from collections import deque
@@ -30,8 +32,6 @@ from contextlib import contextmanager
 from tornado import gen, iostream, ioloop, tcpserver, concurrent
 
 __all__ = ['TTornadoServer', 'TTornadoStreamTransport']
-
-logger = logging.getLogger(__name__)
 
 
 class _Lock(object):
@@ -164,20 +164,14 @@ class TTornadoServer(tcpserver.TCPServer):
 
     @gen.coroutine
     def handle_stream(self, stream, address):
-        host, port = address[:2]
+        host, port = address
         trans = TTornadoStreamTransport(host=host, port=port, stream=stream,
                                         io_loop=self.io_loop)
         oprot = self._oprot_factory.getProtocol(trans)
 
         try:
             while not trans.stream.closed():
-                try:
-                    frame = yield trans.readFrame()
-                except TTransportException as e:
-                    if e.type == TTransportException.END_OF_FILE:
-                        break
-                    else:
-                        raise
+                frame = yield trans.readFrame()
                 tr = TMemoryBuffer(frame)
                 iprot = self._iprot_factory.getProtocol(tr)
                 yield self._processor.process(iprot, oprot)

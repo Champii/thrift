@@ -19,16 +19,13 @@
 %%% -*- mode:erlang -*-
 {application, thrift_test, [
   % A quick description of the application.
-  {description, "Thrift cross language test"},
+  {description, "tests for thrift erlang compiler backend"},
 
   % The version of the applicaton
-  {vsn, "1.0.0-dev"},
+  {vsn, "0.9.3"},
 
   % All modules used by the application.
-  {modules, [
-    test_client,
-    test_thrift_server
-  ]},
+  {modules, [legacy_names_test, name_conflict_test, thrift_test_test]},
 
   % All of the registered names the application uses. This can be ignored.
   {registered, []},

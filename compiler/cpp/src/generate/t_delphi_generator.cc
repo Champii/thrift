@@ -60,26 +60,16 @@ public:
     has_const = false;
     std::map<std::string, std::string>::const_iterator iter;
 
-    ansistr_binary_ = false;
-    register_types_ = false;
-    constprefix_ = false;
-    events_ = false;
-    xmldoc_ = false;
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("ansistr_binary") == 0) {
-        ansistr_binary_ = true;
-      } else if( iter->first.compare("register_types") == 0) {
-        register_types_ = true;
-      } else if( iter->first.compare("constprefix") == 0) {
-        constprefix_ = true;
-      } else if( iter->first.compare("events") == 0) {
-        events_ = true;
-      } else if( iter->first.compare("xmldoc") == 0) {
-        xmldoc_ = true;
-      } else {
-        throw "unknown option delphi:" + iter->first; 
-      }
-    }
+    iter = parsed_options.find("ansistr_binary");
+    ansistr_binary_ = (iter != parsed_options.end());
+    iter = parsed_options.find("register_types");
+    register_types_ = (iter != parsed_options.end());
+    iter = parsed_options.find("constprefix");
+    constprefix_ = (iter != parsed_options.end());
+    iter = parsed_options.find("events");
+    events_ = (iter != parsed_options.end());
+    iter = parsed_options.find("xmldoc");
+    xmldoc_ = (iter != parsed_options.end());
 
     out_dir_base_ = "gen-delphi";
     escape_.clear();
@@ -985,7 +975,7 @@ void t_delphi_generator::init_known_types_list() {
   types_known[type_name(g_type_string)] = 1;
   types_known[type_name(g_type_binary)] = 1;
   types_known[type_name(g_type_bool)] = 1;
-  types_known[type_name(g_type_i8)] = 1;
+  types_known[type_name(g_type_byte)] = 1;
   types_known[type_name(g_type_i16)] = 1;
   types_known[type_name(g_type_i32)] = 1;
   types_known[type_name(g_type_i64)] = 1;
@@ -1339,7 +1329,7 @@ string t_delphi_generator::render_const_value(ostream& vars,
     case t_base_type::TYPE_BOOL:
       render << ((value->get_integer() > 0) ? "True" : "False");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       render << "ShortInt( " << value->get_integer() << ")";
       break;
     case t_base_type::TYPE_I16:
@@ -2547,7 +2537,7 @@ void t_delphi_generator::generate_deserialize_field(ostream& out,
       case t_base_type::TYPE_BOOL:
         out << "ReadBool();";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "ReadByte();";
         break;
       case t_base_type::TYPE_I16:
@@ -2749,7 +2739,7 @@ void t_delphi_generator::generate_serialize_field(ostream& out,
       case t_base_type::TYPE_BOOL:
         out << "WriteBool(" << name << ");";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "WriteByte(" << name << ");";
         break;
       case t_base_type::TYPE_I16:
@@ -3039,7 +3029,7 @@ string t_delphi_generator::input_arg_prefix(t_type* ttype) {
       return "const ";
 
     // all others don't need to be
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
     case t_base_type::TYPE_I32:
     case t_base_type::TYPE_BOOL:
@@ -3088,7 +3078,7 @@ string t_delphi_generator::base_type_name(t_base_type* tbase) {
     }
   case t_base_type::TYPE_BOOL:
     return "Boolean";
-  case t_base_type::TYPE_I8:
+  case t_base_type::TYPE_BYTE:
     return "ShortInt";
   case t_base_type::TYPE_I16:
     return "SmallInt";
@@ -3224,7 +3214,7 @@ string t_delphi_generator::type_to_enum(t_type* type) {
       return "TType.String_";
     case t_base_type::TYPE_BOOL:
       return "TType.Bool_";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "TType.Byte_";
     case t_base_type::TYPE_I16:
       return "TType.I16";
@@ -3272,7 +3262,7 @@ string t_delphi_generator::empty_value(t_type* type) {
       }
     case t_base_type::TYPE_BOOL:
       return "False";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
     case t_base_type::TYPE_I32:
     case t_base_type::TYPE_I64:

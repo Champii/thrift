@@ -49,9 +49,9 @@ public class TSSLTransportFactory {
    * from System properties that are set.
    *
    * Example system properties:
-   * -Djavax.net.ssl.trustStore=&lt;truststore location&gt;
+   * -Djavax.net.ssl.trustStore=<truststore location>
    * -Djavax.net.ssl.trustStorePassword=password
-   * -Djavax.net.ssl.keyStore=&lt;keystore location&gt;
+   * -Djavax.net.ssl.keyStore=<keystore location>
    * -Djavax.net.ssl.keyStorePassword=password
    *
    * @param port
@@ -309,7 +309,7 @@ public class TSSLTransportFactory {
       if (protocol != null) {
         this.protocol = protocol;
       }
-      this.cipherSuites = cipherSuites != null ? Arrays.copyOf(cipherSuites, cipherSuites.length) : null;
+      this.cipherSuites = Arrays.copyOf(cipherSuites, cipherSuites.length);
       this.clientAuth = clientAuth;
     }
 

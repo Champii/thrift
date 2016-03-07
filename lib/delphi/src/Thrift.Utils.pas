@@ -22,7 +22,7 @@ unit Thrift.Utils;
 interface
 
 uses
-  Classes, Windows, SysUtils, Character, SyncObjs;
+  Classes, Windows, SysUtils, SyncObjs;
 
 type
   IOverlappedHelper = interface
@@ -54,14 +54,6 @@ type
     class function Encode( const src : TBytes; srcOff, len : Integer; dst : TBytes; dstOff : Integer) : Integer; static;
     class function Decode( const src : TBytes; srcOff, len : Integer; dst : TBytes; dstOff : Integer) : Integer; static;
   end;
-
-
-  CharUtils = class sealed
-  public
-    class function IsHighSurrogate( const c : Char) : Boolean; static; inline;
-    class function IsLowSurrogate( const c : Char) : Boolean; static; inline;
-  end;
-
 
 
 implementation
@@ -192,28 +184,6 @@ begin
     end;
   end;
 end;
-
-
-class function CharUtils.IsHighSurrogate( const c : Char) : Boolean;
-begin
-  {$IF RTLVersion  >= 28.0}  // XE7+
-  result := c.IsHighSurrogate();
-  {$ELSE}
-  result := Character.IsHighSurrogate( c);
-  {$IFEND}
-end;
-
-
-class function CharUtils.IsLowSurrogate( const c : Char) : Boolean;
-begin
-  {$IF RTLVersion  >= 28.0}  // XE7+
-  result := c.IsLowSurrogate();
-  {$ELSE}
-  result := Character.IsLowSurrogate( c);
-  {$IFEND}
-end;
-
-
 
 
 end.

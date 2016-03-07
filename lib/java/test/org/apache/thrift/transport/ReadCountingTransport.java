@@ -22,40 +22,26 @@ package org.apache.thrift.transport;
 public class ReadCountingTransport extends TTransport {
   public int readCount = 0;
   private TTransport trans;
-  private boolean open = true;
 
   public ReadCountingTransport(TTransport underlying) {
     trans = underlying;
   }
 
   @Override
-  public void close() {
-    open = false;
-  }
+  public void close() {}
 
   @Override
-  public boolean isOpen() {
-    return open;
-  }
+  public boolean isOpen() {return true;}
 
   @Override
-  public void open() throws TTransportException {
-    open = true;
-  }
+  public void open() throws TTransportException {}
 
   @Override
   public int read(byte[] buf, int off, int len) throws TTransportException {
-    if (!isOpen()) {
-      throw new TTransportException(TTransportException.NOT_OPEN, "Transport is closed");
-    }
     readCount++;
     return trans.read(buf, off, len);
   }
 
   @Override
-  public void write(byte[] buf, int off, int len) throws TTransportException {
-    if (!isOpen()) {
-      throw new TTransportException(TTransportException.NOT_OPEN, "Transport is closed");
-    }
-  }
+  public void write(byte[] buf, int off, int len) throws TTransportException {}
 }

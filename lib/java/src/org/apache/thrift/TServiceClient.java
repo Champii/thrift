@@ -76,8 +76,7 @@ public abstract class TServiceClient {
   protected void receiveBase(TBase<?,?> result, String methodName) throws TException {
     TMessage msg = iprot_.readMessageBegin();
     if (msg.type == TMessageType.EXCEPTION) {
-      TApplicationException x = new TApplicationException();
-      x.read(iprot_);
+      TApplicationException x = TApplicationException.read(iprot_);
       iprot_.readMessageEnd();
       throw x;
     }

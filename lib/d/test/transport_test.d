@@ -144,7 +144,7 @@ class CoupledWrapperTransports(WrapperTransport, InnerCoupledTransports) if (
   }
 
   ~this() {
-    destroy(inner_);
+    clear(inner_);
   }
 
 private:

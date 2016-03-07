@@ -54,9 +54,7 @@ sub __close
 {
     my $self = shift;
     my $sock = ($self->{handle}->handles())[0];
-    if ($sock) {
-      $sock->close(SSL_no_shutdown => 1);
-    }
+    $sock->close(SSL_no_shutdown => 1);
 }
 
 sub __recv
@@ -65,10 +63,8 @@ sub __recv
 	my $sock = shift;
 	my $len = shift;
 	my $buf = undef;
-  if ($sock) {
     sysread($sock, $buf, $len);
-  }
-  return $buf;
+    return $buf;
 }
 
 sub __send
@@ -83,7 +79,7 @@ sub __wait
 {
     my $self = shift;
     my $sock = ($self->{handle}->handles())[0];
-    if ($sock and $sock->pending() eq 0) {
+    if ($sock->pending() eq 0) {
         return $self->SUPER::__wait();
     }
     return $sock;

@@ -81,21 +81,10 @@ public:
                  const std::string& option_string)
     : t_oop_generator(program) {
     (void)option_string;
-    std::map<std::string, std::string>::const_iterator iter;
-
-    require_rubygems_ = false;
-    namespaced_ = false;
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("rubygems") == 0) {
-        require_rubygems_ = true;
-      } else if( iter->first.compare("namespaced") == 0) {
-        namespaced_ = true;
-      } else {
-        throw "unknown option ruby:" + iter->first; 
-      }
-    }
-
     out_dir_base_ = "gen-rb";
+
+    require_rubygems_ = (parsed_options.find("rubygems") != parsed_options.end());
+    namespaced_ = (parsed_options.find("namespaced") != parsed_options.end());
   }
 
   /**
@@ -432,7 +421,7 @@ t_rb_ofstream& t_rb_generator::render_const_value(t_rb_ofstream& out,
     case t_base_type::TYPE_BOOL:
       out << (value->get_integer() > 0 ? "true" : "false");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
     case t_base_type::TYPE_I32:
     case t_base_type::TYPE_I64:
@@ -1136,7 +1125,7 @@ string t_rb_generator::type_to_enum(t_type* type) {
       return "::Thrift::Types::STRING";
     case t_base_type::TYPE_BOOL:
       return "::Thrift::Types::BOOL";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "::Thrift::Types::BYTE";
     case t_base_type::TYPE_I16:
       return "::Thrift::Types::I16";

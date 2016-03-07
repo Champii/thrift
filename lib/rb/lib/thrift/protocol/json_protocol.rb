@@ -18,7 +18,6 @@
 # under the License.
 # 
 
-require 'base64'
 
 module Thrift
   class LookaheadReader
@@ -311,7 +310,7 @@ module Thrift
     def write_json_base64(str)
       @context.write(trans)
       trans.write(@@kJSONStringDelimiter)
-      trans.write(Base64.strict_encode64(str))
+      write_json_string([str].pack("m"))
       trans.write(@@kJSONStringDelimiter)
     end
 
@@ -514,7 +513,7 @@ module Thrift
       # The elements of this array must match up with the sequence of characters in
       # escape_chars
       escape_char_vals = [
-        "\"", "\\", "\/", "\b", "\f", "\n", "\r", "\t",
+        '"', '\\', '/', '\b', '\f', '\n', '\r', '\t',
       ]
 
       if !skipContext
@@ -547,15 +546,7 @@ module Thrift
 
     # Reads a block of base64 characters, decoding it, and returns via str
     def read_json_base64
-      str = read_json_string
-      m = str.length % 4
-      if m != 0
-        # Add missing padding
-        (4 - m).times do
-          str += '='
-        end
-      end
-      Base64.strict_decode64(str)
+      read_json_string.unpack("m")[0]
     end
 
     # Reads a sequence of characters, stopping at the first one that is not

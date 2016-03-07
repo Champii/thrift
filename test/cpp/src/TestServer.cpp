@@ -24,7 +24,6 @@
 #include <thrift/concurrency/PlatformThreadFactory.h>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
-#include <thrift/protocol/THeaderProtocol.h>
 #include <thrift/protocol/TJSONProtocol.h>
 #include <thrift/server/TSimpleServer.h>
 #include <thrift/server/TThreadedServer.h>
@@ -222,14 +221,34 @@ public:
   }
 
   void testInsanity(map<UserId, map<Numberz::type, Insanity> >& insane, const Insanity& argument) {
+    (void)argument;
     printf("testInsanity()\n");
 
+    Xtruct hello;
+    hello.string_thing = "Hello2";
+    hello.byte_thing = 2;
+    hello.i32_thing = 2;
+    hello.i64_thing = 2;
+
+    Xtruct goodbye;
+    goodbye.string_thing = "Goodbye4";
+    goodbye.byte_thing = 4;
+    goodbye.i32_thing = 4;
+    goodbye.i64_thing = 4;
+
+    Insanity crazy;
+    crazy.userMap.insert(make_pair(Numberz::EIGHT, 8));
+    crazy.xtructs.push_back(goodbye);
+
     Insanity looney;
+    crazy.userMap.insert(make_pair(Numberz::FIVE, 5));
+    crazy.xtructs.push_back(hello);
+
     map<Numberz::type, Insanity> first_map;
     map<Numberz::type, Insanity> second_map;
 
-    first_map.insert(make_pair(Numberz::TWO, argument));
-    first_map.insert(make_pair(Numberz::THREE, argument));
+    first_map.insert(make_pair(Numberz::TWO, crazy));
+    first_map.insert(make_pair(Numberz::THREE, crazy));
 
     second_map.insert(make_pair(Numberz::SIX, looney));
 
@@ -533,8 +552,6 @@ protected:
   boost::shared_ptr<TestHandler> _delegate;
 };
 
-namespace po = boost::program_options;
-
 int main(int argc, char** argv) {
 
   string file_path = boost::filesystem::system_complete(argv[0]).string();
@@ -549,29 +566,33 @@ int main(int argc, char** argv) {
   string protocol_type = "binary";
   string server_type = "simple";
   string domain_socket = "";
-  bool abstract_namespace = false;
   size_t workers = 4;
-  int string_limit = 0;
-  int container_limit = 0;
 
-  po::options_description desc("Allowed options");
-  desc.add_options()
-    ("help,h", "produce help message")
-    ("port", po::value<int>(&port)->default_value(port), "Port number to listen")
-    ("domain-socket", po::value<string>(&domain_socket) ->default_value(domain_socket), "Unix Domain Socket (e.g. /tmp/ThriftTest.thrift)")
-    ("abstract-namespace", "Create the domain socket in the Abstract Namespace (no connection with filesystem pathnames)")
-    ("server-type", po::value<string>(&server_type)->default_value(server_type), "type of server, \"simple\", \"thread-pool\", \"threaded\", or \"nonblocking\"")
-    ("transport", po::value<string>(&transport_type)->default_value(transport_type), "transport: buffered, framed, http")
-    ("protocol", po::value<string>(&protocol_type)->default_value(protocol_type), "protocol: binary, compact, header, json")
-    ("ssl", "Encrypted Transport using SSL")
-    ("processor-events", "processor-events")
-    ("workers,n", po::value<size_t>(&workers)->default_value(workers), "Number of thread pools workers. Only valid for thread-pool server type")
-    ("string-limit", po::value<int>(&string_limit))
-    ("container-limit", po::value<int>(&container_limit));
+  boost::program_options::options_description desc("Allowed options");
+  desc.add_options()("help,h", "produce help message")(
+      "port",
+      boost::program_options::value<int>(&port)->default_value(port),
+      "Port number to listen")("domain-socket",
+                               boost::program_options::value<string>(&domain_socket)
+                                   ->default_value(domain_socket),
+                               "Unix Domain Socket (e.g. /tmp/ThriftTest.thrift)")(
+      "server-type",
+      boost::program_options::value<string>(&server_type)->default_value(server_type),
+      "type of server, \"simple\", \"thread-pool\", \"threaded\", or \"nonblocking\"")(
+      "transport",
+      boost::program_options::value<string>(&transport_type)->default_value(transport_type),
+      "transport: buffered, framed, http")(
+      "protocol",
+      boost::program_options::value<string>(&protocol_type)->default_value(protocol_type),
+      "protocol: binary, compact, json")("ssl", "Encrypted Transport using SSL")(
+      "processor-events",
+      "processor-events")("workers,n",
+                          boost::program_options::value<size_t>(&workers)->default_value(workers),
+                          "Number of thread pools workers. Only valid for thread-pool server type");
 
-  po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, desc), vm);
-  po::notify(vm);
+  boost::program_options::variables_map vm;
+  boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+  boost::program_options::notify(vm);
 
   if (vm.count("help")) {
     cout << desc << "\n";
@@ -593,7 +614,6 @@ int main(int argc, char** argv) {
       if (protocol_type == "binary") {
       } else if (protocol_type == "compact") {
       } else if (protocol_type == "json") {
-      } else if (protocol_type == "header") {
       } else {
         throw invalid_argument("Unknown protocol type " + protocol_type);
       }
@@ -618,28 +638,18 @@ int main(int argc, char** argv) {
     ssl = true;
   }
 
-  if (vm.count("abstract-namespace")) {
-    abstract_namespace = true;
-  }
-
   // Dispatcher
   boost::shared_ptr<TProtocolFactory> protocolFactory;
   if (protocol_type == "json") {
     boost::shared_ptr<TProtocolFactory> jsonProtocolFactory(new TJSONProtocolFactory());
     protocolFactory = jsonProtocolFactory;
   } else if (protocol_type == "compact") {
-    TCompactProtocolFactoryT<TBufferBase> *compactProtocolFactory = new TCompactProtocolFactoryT<TBufferBase>();
-    compactProtocolFactory->setContainerSizeLimit(container_limit);
-    compactProtocolFactory->setStringSizeLimit(string_limit);
-    protocolFactory.reset(compactProtocolFactory);
-  } else if (protocol_type == "header") {
-    boost::shared_ptr<TProtocolFactory> headerProtocolFactory(new THeaderProtocolFactory());
-    protocolFactory = headerProtocolFactory;
+    boost::shared_ptr<TProtocolFactory> compactProtocolFactory(new TCompactProtocolFactory());
+    protocolFactory = compactProtocolFactory;
   } else {
-    TBinaryProtocolFactoryT<TBufferBase>* binaryProtocolFactory = new TBinaryProtocolFactoryT<TBufferBase>();
-    binaryProtocolFactory->setContainerSizeLimit(container_limit);
-    binaryProtocolFactory->setStringSizeLimit(string_limit);
-    protocolFactory.reset(binaryProtocolFactory);
+    boost::shared_ptr<TProtocolFactory> binaryProtocolFactory(
+        new TBinaryProtocolFactoryT<TBufferBase>());
+    protocolFactory = binaryProtocolFactory;
   }
 
   // Processor
@@ -663,14 +673,8 @@ int main(int argc, char** argv) {
     serverSocket = boost::shared_ptr<TServerSocket>(new TSSLServerSocket(port, sslSocketFactory));
   } else {
     if (domain_socket != "") {
-      if (abstract_namespace) {
-        std::string abstract_socket("\0", 1);
-        abstract_socket += domain_socket;
-        serverSocket = boost::shared_ptr<TServerSocket>(new TServerSocket(abstract_socket));
-      } else {
-        unlink(domain_socket.c_str());
-        serverSocket = boost::shared_ptr<TServerSocket>(new TServerSocket(domain_socket));
-      }
+      unlink(domain_socket.c_str());
+      serverSocket = boost::shared_ptr<TServerSocket>(new TServerSocket(domain_socket));
       port = 0;
     } else {
       serverSocket = boost::shared_ptr<TServerSocket>(new TServerSocket(port));
@@ -693,11 +697,7 @@ int main(int argc, char** argv) {
 
   // Server Info
   cout << "Starting \"" << server_type << "\" server (" << transport_type << "/" << protocol_type
-       << ") listen on: ";
-  if (abstract_namespace) {
-    cout << '@';
-  }
-  cout << domain_socket;
+       << ") listen on: " << domain_socket;
   if (port != 0) {
     cout << port;
   }
@@ -742,16 +742,11 @@ int main(int argc, char** argv) {
       TEvhttpServer nonblockingServer(testBufferProcessor, port);
       nonblockingServer.serve();
     } else {
-      server.reset(new TNonblockingServer(testProcessor, protocolFactory, port));
+      server.reset(new TNonblockingServer(testProcessor, port));
     }
   }
 
   if (server.get() != NULL) {
-    if (protocol_type == "header") {
-      // Tell the server to use the same protocol for input / output 
-      // if using header
-      server->setOutputProtocolFactory(boost::shared_ptr<TProtocolFactory>());
-    }
     apache::thrift::concurrency::PlatformThreadFactory factory;
     factory.setDetached(false);
     boost::shared_ptr<apache::thrift::concurrency::Runnable> serverThreadRunner(server);

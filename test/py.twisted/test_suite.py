@@ -19,10 +19,7 @@
 # under the License.
 #
 
-import sys
-import os
-import glob
-import time
+import sys, os, glob, time
 basepath = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(basepath, 'gen-py.twisted'))
 sys.path.insert(0, glob.glob(os.path.join(basepath, '../../lib/py/build/lib.*'))[0])
@@ -37,7 +34,6 @@ from twisted.internet import defer, reactor
 from twisted.internet.protocol import ClientCreator
 
 from zope.interface import implements
-
 
 class TestHandler:
     implements(ThriftTest.Iface)
@@ -104,7 +100,6 @@ class TestHandler:
     def testTypedef(self, thing):
         return thing
 
-
 class ThriftTestCase(unittest.TestCase):
 
     @defer.inlineCallbacks
@@ -113,15 +108,16 @@ class ThriftTestCase(unittest.TestCase):
         self.processor = ThriftTest.Processor(self.handler)
         self.pfactory = TBinaryProtocol.TBinaryProtocolFactory()
 
-        self.server = reactor.listenTCP(
-            0, TTwisted.ThriftServerFactory(self.processor, self.pfactory), interface="127.0.0.1")
+        self.server = reactor.listenTCP(0,
+            TTwisted.ThriftServerFactory(self.processor,
+            self.pfactory), interface="127.0.0.1")
 
         self.portNo = self.server.getHost().port
 
         self.txclient = yield ClientCreator(reactor,
-                                            TTwisted.ThriftClientProtocol,
-                                            ThriftTest.Client,
-                                            self.pfactory).connectTCP("127.0.0.1", self.portNo)
+            TTwisted.ThriftClientProtocol,
+            ThriftTest.Client,
+            self.pfactory).connectTCP("127.0.0.1", self.portNo)
         self.client = self.txclient.client
 
     @defer.inlineCallbacks
@@ -176,14 +172,14 @@ class ThriftTestCase(unittest.TestCase):
         try:
             yield self.client.testException('Xception')
             self.fail("should have gotten exception")
-        except Xception as x:
+        except Xception, x:
             self.assertEquals(x.errorCode, 1001)
             self.assertEquals(x.message, 'Xception')
 
         try:
             yield self.client.testException("throw_undeclared")
             self.fail("should have thrown exception")
-        except Exception:  # type is undefined
+        except Exception: # type is undefined
             pass
 
     @defer.inlineCallbacks

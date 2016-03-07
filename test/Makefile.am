@@ -17,7 +17,7 @@
 # under the License.
 #
 
-SUBDIRS = features
+SUBDIRS =
 PRECROSS_TARGET =
 
 if WITH_C_GLIB
@@ -38,11 +38,6 @@ endif
 if WITH_PHP
 SUBDIRS += php
 PRECROSS_TARGET += precross-php
-endif
-
-if WITH_DART
-SUBDIRS += dart
-PRECROSS_TARGET += precross-dart
 endif
 
 if WITH_PYTHON
@@ -72,12 +67,6 @@ endif
 
 if WITH_ERLANG
 SUBDIRS += erl
-PRECROSS_TARGET += precross-erl
-endif
-
-if WITH_LUA
-SUBDIRS += lua
-PRECROSS_TARGET += precross-lua
 endif
 
 #
@@ -129,8 +118,8 @@ EXTRA_DIST = \
 	tests.json \
 	ThriftTest.thrift \
 	TypedefTest.thrift \
-	result.js \
-	index.html \
+	FastbinaryTest.py \
+	result.html \
 	README.md \
 	valgrind.suppress
 

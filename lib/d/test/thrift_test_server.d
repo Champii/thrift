@@ -86,11 +86,6 @@ class TestHandler : ThriftTest {
     return thing;
   }
 
-  override bool testBool(bool thing) {
-    if (trace_) writefln("testBool(\"%s\")", thing);
-    return thing;
-  }
-
   override Xtruct testStruct(ref const(Xtruct) thing) {
     if (trace_) writefln("testStruct({\"%s\", %s, %s, %s})",
       thing.string_thing, thing.byte_thing, thing.i32_thing, thing.i64_thing);
@@ -143,17 +138,7 @@ class TestHandler : ThriftTest {
 
   override Insanity[Numberz][UserId] testInsanity(ref const(Insanity) argument) {
     if (trace_) writeln("testInsanity()");
-    Insanity[Numberz][UserId] ret;
-    Insanity[Numberz] m1;
-    Insanity[Numberz] m2;
-    Insanity tmp;
-    tmp = cast(Insanity)argument;
-    m1[Numberz.TWO] = tmp;
-    m1[Numberz.THREE] = tmp;
-    m2[Numberz.SIX] = Insanity();
-    ret[1] = m1;
-    ret[2] = m2;
-    return ret;
+    return testInsanityReturn;
   }
 
   override Xtruct testMulti(byte arg0, int arg1, long arg2, string[short] arg3,
@@ -170,8 +155,6 @@ class TestHandler : ThriftTest {
       e.errorCode = 1001;
       e.message = arg;
       throw e;
-    } else if (arg == "TException") {
-      throw new TException();
     } else if (arg == "ApplicationException") {
       throw new TException();
     }
@@ -266,8 +249,8 @@ void main(string[] args) {
   if (ssl) {
     auto sslContext = new TSSLContext();
     sslContext.serverSide = true;
-    sslContext.loadCertificate("../../../test/keys/server.crt");
-    sslContext.loadPrivateKey("../../../test/keys/server.key");
+    sslContext.loadCertificate("./server-certificate.pem");
+    sslContext.loadPrivateKey("./server-private-key.pem");
     sslContext.ciphers = "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH";
     serverSocket = new TSSLServerSocket(port, sslContext);
   } else {

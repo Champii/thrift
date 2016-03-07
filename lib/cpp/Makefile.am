@@ -35,8 +35,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 lib_LTLIBRARIES = libthrift.la
 pkgconfig_DATA = thrift.pc
-libthrift_la_LDFLAGS = -release $(VERSION)
-libthrift_la_LIBADD = $(BOOST_LDFLAGS) $(OPENSSL_LDFLAGS) $(OPENSSL_LIBS)
+libthrift_la_LDFLAGS = -release $(VERSION) $(BOOST_LDFLAGS) $(OPENSSL_LDFLAGS)
 
 ## We only build the extra libraries if we have the dependencies,
 ## but we install all of the headers unconditionally.
@@ -59,6 +58,7 @@ endif
 
 AM_CXXFLAGS = -Wall -Wextra -pedantic
 AM_CPPFLAGS = $(BOOST_CPPFLAGS) $(OPENSSL_INCLUDES) -I$(srcdir)/src -D__STDC_LIMIT_MACROS
+AM_LDFLAGS = $(BOOST_LDFLAGS) $(OPENSSL_LDFLAGS)
 
 # Define the source files for the module
 
@@ -114,10 +114,7 @@ libthriftnb_la_SOURCES = src/thrift/server/TNonblockingServer.cpp \
                          src/thrift/async/TEvhttpServer.cpp \
                          src/thrift/async/TEvhttpClientChannel.cpp
 
-libthriftz_la_SOURCES = src/thrift/transport/TZlibTransport.cpp \
-                        src/thrift/transport/THeaderTransport.cpp \
-                        src/thrift/protocol/THeaderProtocol.cpp 
-
+libthriftz_la_SOURCES = src/thrift/transport/TZlibTransport.cpp
 
 libthriftqt_la_MOC = src/thrift/qt/moc_TQTcpServer.cpp
 nodist_libthriftqt_la_SOURCES = $(libthriftqt_la_MOC)
@@ -159,8 +156,7 @@ include_thrift_HEADERS = \
                          src/thrift/TApplicationException.h \
                          src/thrift/TLogging.h \
                          src/thrift/cxxfunctional.h \
-                         src/thrift/TToString.h \
-                         src/thrift/TBase.h
+                         src/thrift/TToString.h
 
 include_concurrencydir = $(include_thriftdir)/concurrency
 include_concurrency_HEADERS = \
@@ -187,13 +183,11 @@ include_protocol_HEADERS = \
                          src/thrift/protocol/TCompactProtocol.h \
                          src/thrift/protocol/TCompactProtocol.tcc \
                          src/thrift/protocol/TDebugProtocol.h \
-                         src/thrift/protocol/THeaderProtocol.h \
                          src/thrift/protocol/TBase64Utils.h \
                          src/thrift/protocol/TJSONProtocol.h \
                          src/thrift/protocol/TMultiplexedProtocol.h \
                          src/thrift/protocol/TProtocolDecorator.h \
                          src/thrift/protocol/TProtocolTap.h \
-                         src/thrift/protocol/TProtocolTypes.h \
                          src/thrift/protocol/TProtocolException.h \
                          src/thrift/protocol/TVirtualProtocol.h \
                          src/thrift/protocol/TProtocol.h
@@ -203,7 +197,6 @@ include_transport_HEADERS = \
                          src/thrift/transport/PlatformSocket.h \
                          src/thrift/transport/TFDTransport.h \
                          src/thrift/transport/TFileTransport.h \
-                         src/thrift/transport/THeaderTransport.h \
                          src/thrift/transport/TSimpleFileTransport.h \
                          src/thrift/transport/TServerSocket.h \
                          src/thrift/transport/TSSLServerSocket.h \

@@ -101,6 +101,8 @@ public:
 
   bool is_enum() const { return true; }
 
+  virtual std::string get_fingerprint_material() const { return "enum"; }
+
 private:
   std::vector<t_enum_value*> constants_;
 };

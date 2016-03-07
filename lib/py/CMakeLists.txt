@@ -20,13 +20,7 @@
 include_directories(${PYTHON_INCLUDE_DIRS})
 
 add_custom_target(python_build ALL
-    COMMAND ${PIP_EXECUTABLE} install -r requirements.txt || ${PIP_EXECUTABLE} install --user -r requirements.txt
     COMMAND ${PYTHON_EXECUTABLE} setup.py build
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Building Python library"
 )
-
-if(BUILD_TESTING)
-    add_test(PythonTestSSLSocket ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test/test_sslsocket.py)
-    add_test(PythonThriftJson ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test/thrift_json.py)
-endif()

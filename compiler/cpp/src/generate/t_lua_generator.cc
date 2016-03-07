@@ -41,14 +41,8 @@ public:
     (void)option_string;
     std::map<std::string, std::string>::const_iterator iter;
 
-    gen_requires_ = true;
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("omit_requires") == 0) {
-        gen_requires_ = false;
-      } else {
-        throw "unknown option lua:" + iter->first; 
-      }
-    }
+    iter = parsed_options.find("omit_requires");
+    gen_requires_ = (iter == parsed_options.end());
 
     out_dir_base_ = "gen-lua";
   }
@@ -250,7 +244,7 @@ string t_lua_generator::render_const_value(t_type* type, t_const_value* value) {
     case t_base_type::TYPE_BOOL:
       out << (value->get_integer() > 0 ? "true" : "false");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
     case t_base_type::TYPE_I32:
       out << value->get_integer();
@@ -469,9 +463,7 @@ void t_lua_generator::generate_lua_struct_writer(ofstream& out, t_struct* tstruc
 
   indent(out) << "oprot:writeStructBegin('" << tstruct->get_name() << "')" << endl;
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    // To check element of self whether nil or not.
-    // avoid the value(false) of BOOL is lost.
-    indent(out) << "if self." << (*f_iter)->get_name() << " ~= nil then" << endl;
+    indent(out) << "if self." << (*f_iter)->get_name() << " then" << endl;
     indent_up();
     indent(out) << "oprot:writeFieldBegin('" << (*f_iter)->get_name() << "', "
                 << type_to_enum((*f_iter)->get_type()) << ", " << (*f_iter)->get_key() << ")"
@@ -615,7 +607,7 @@ void t_lua_generator::generate_service_client(ofstream& out, t_service* tservice
 
       // Return the result if it's not a void function
       if (!(*f_iter)->get_returntype()->is_void()) {
-        out << indent() << "if result.success ~= nil then" << endl << indent() << "  return result.success"
+        out << indent() << "if result.success then" << endl << indent() << "  return result.success"
             << endl;
 
         // Throw custom exceptions
@@ -795,7 +787,7 @@ void t_lua_generator::generate_deserialize_field(ofstream& out,
       case t_base_type::TYPE_BOOL:
         out << "readBool()";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "readByte()";
         break;
       case t_base_type::TYPE_I16:
@@ -843,9 +835,9 @@ void t_lua_generator::generate_deserialize_container(ofstream& out,
   string etype = tmp("_etype");
 
   t_field fsize(g_type_i32, size);
-  t_field fktype(g_type_i8, ktype);
-  t_field fvtype(g_type_i8, vtype);
-  t_field fetype(g_type_i8, etype);
+  t_field fktype(g_type_byte, ktype);
+  t_field fvtype(g_type_byte, vtype);
+  t_field fetype(g_type_byte, etype);
 
   // Declare variables, read header
   indent(out) << (local ? "local " : "") << prefix << " = {}" << endl;
@@ -950,7 +942,7 @@ void t_lua_generator::generate_serialize_field(ofstream& out, t_field* tfield, s
       case t_base_type::TYPE_BOOL:
         out << "writeBool(" << name << ")";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "writeByte(" << name << ")";
         break;
       case t_base_type::TYPE_I16:
@@ -1106,7 +1098,7 @@ string t_lua_generator::type_to_enum(t_type* type) {
       return "TType.STRING";
     case t_base_type::TYPE_BOOL:
       return "TType.BOOL";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "TType.BYTE";
     case t_base_type::TYPE_I16:
       return "TType.I16";
@@ -1132,7 +1124,4 @@ string t_lua_generator::type_to_enum(t_type* type) {
   throw "INVALID TYPE IN type_to_enum: " + type->get_name();
 }
 
-THRIFT_REGISTER_GENERATOR(
-    lua,
-    "Lua",
-    "    omit_requires:   Suppress generation of require 'somefile'.\n")
+THRIFT_REGISTER_GENERATOR(lua, "Lua", "")

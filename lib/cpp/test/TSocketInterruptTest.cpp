@@ -26,13 +26,14 @@
 #include <boost/thread/thread.hpp>
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TServerSocket.h>
+#include "TestPortFixture.h"
 
 using apache::thrift::transport::TServerSocket;
 using apache::thrift::transport::TSocket;
 using apache::thrift::transport::TTransport;
 using apache::thrift::transport::TTransportException;
 
-BOOST_AUTO_TEST_SUITE(TSocketInterruptTest)
+BOOST_FIXTURE_TEST_SUITE(TSocketInterruptTest, TestPortFixture)
 
 void readerWorker(boost::shared_ptr<TTransport> tt, uint32_t expectedResult) {
   uint8_t buf[4];
@@ -50,10 +51,9 @@ void readerWorkerMustThrow(boost::shared_ptr<TTransport> tt) {
 }
 
 BOOST_AUTO_TEST_CASE(test_interruptable_child_read) {
-  TServerSocket sock1("localhost", 0);
+  TServerSocket sock1("localhost", m_serverPort);
   sock1.listen();
-  int port = sock1.getPort();
-  TSocket clientSock("localhost", port);
+  TSocket clientSock("localhost", m_serverPort);
   clientSock.open();
   boost::shared_ptr<TTransport> accepted = sock1.accept();
   boost::thread readThread(boost::bind(readerWorkerMustThrow, accepted));
@@ -68,11 +68,10 @@ BOOST_AUTO_TEST_CASE(test_interruptable_child_read) {
 }
 
 BOOST_AUTO_TEST_CASE(test_non_interruptable_child_read) {
-  TServerSocket sock1("localhost", 0);
+  TServerSocket sock1("localhost", m_serverPort);
   sock1.setInterruptableChildren(false); // returns to pre-THRIFT-2441 behavior
   sock1.listen();
-  int port = sock1.getPort();
-  TSocket clientSock("localhost", port);
+  TSocket clientSock("localhost", m_serverPort);
   clientSock.open();
   boost::shared_ptr<TTransport> accepted = sock1.accept();
   boost::thread readThread(boost::bind(readerWorker, accepted, 0));
@@ -90,7 +89,7 @@ BOOST_AUTO_TEST_CASE(test_non_interruptable_child_read) {
 }
 
 BOOST_AUTO_TEST_CASE(test_cannot_change_after_listen) {
-  TServerSocket sock1("localhost", 0);
+  TServerSocket sock1("localhost", m_serverPort);
   sock1.listen();
   BOOST_CHECK_THROW(sock1.setInterruptableChildren(false), std::logic_error);
   sock1.close();
@@ -101,10 +100,9 @@ void peekerWorker(boost::shared_ptr<TTransport> tt, bool expectedResult) {
 }
 
 BOOST_AUTO_TEST_CASE(test_interruptable_child_peek) {
-  TServerSocket sock1("localhost", 0);
+  TServerSocket sock1("localhost", m_serverPort);
   sock1.listen();
-  int port = sock1.getPort();
-  TSocket clientSock("localhost", port);
+  TSocket clientSock("localhost", m_serverPort);
   clientSock.open();
   boost::shared_ptr<TTransport> accepted = sock1.accept();
   // peek() will return false if child is interrupted
@@ -120,11 +118,10 @@ BOOST_AUTO_TEST_CASE(test_interruptable_child_peek) {
 }
 
 BOOST_AUTO_TEST_CASE(test_non_interruptable_child_peek) {
-  TServerSocket sock1("localhost", 0);
+  TServerSocket sock1("localhost", m_serverPort);
   sock1.setInterruptableChildren(false); // returns to pre-THRIFT-2441 behavior
   sock1.listen();
-  int port = sock1.getPort();
-  TSocket clientSock("localhost", port);
+  TSocket clientSock("localhost", m_serverPort);
   clientSock.open();
   boost::shared_ptr<TTransport> accepted = sock1.accept();
   // peek() will return false when remote side is closed

@@ -147,13 +147,8 @@ void TServerFramework::serve() {
 
       inputTransport = inputTransportFactory_->getTransport(client);
       outputTransport = outputTransportFactory_->getTransport(client);
-      if (!outputProtocolFactory_) {
-        inputProtocol = inputProtocolFactory_->getProtocol(inputTransport, outputTransport);
-        outputProtocol = inputProtocol;
-      } else {
-        inputProtocol = inputProtocolFactory_->getProtocol(inputTransport);
-        outputProtocol = outputProtocolFactory_->getProtocol(outputTransport);
-      }
+      inputProtocol = inputProtocolFactory_->getProtocol(inputTransport);
+      outputProtocol = outputProtocolFactory_->getProtocol(outputTransport);
 
       newlyConnectedClient(shared_ptr<TConnectedClient>(
           new TConnectedClient(getProcessor(inputProtocol, outputProtocol, client),

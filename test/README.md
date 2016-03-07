@@ -31,11 +31,6 @@ implementation (currently `cpp` and `java` are recommended) like this:
     test/test.py --server cpp,java --client nodejs
     test/test.py --server nodejs --client cpp,java
 
-Another useful flag is --regex. For example, to run all tests that involve
-Java TBinaryProtocol:
-
-    test/test.py --regex "java.*binary"
-
 ## Test case definition file
 
 The cross test cases are defined in [tests.json](tests.json).
@@ -166,9 +161,7 @@ failing tests:
       #define TEST_STRUCTS       2  // 0000 0010
       #define TEST_CONTAINERS    4  // 0000 0100
       #define TEST_EXCEPTIONS    8  // 0000 1000
-      #define TEST_UNKNOWN      64  // 0100 0000 (Failed to prepare environemt etc.)
-      #define TEST_TIMEOUT     128  // 1000 0000
-      #define TEST_NOTUSED      48  // 0011 0000 (reserved bits)
+      #define TEST_NOTUSED     240  // 1111 0000 (reserved bits)
 
 Tests that have not been executed at all count as errors.
 

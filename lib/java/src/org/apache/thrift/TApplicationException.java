@@ -29,7 +29,7 @@ import org.apache.thrift.protocol.TType;
  * Application level exception
  *
  */
-public class TApplicationException extends TException implements TSerializable {
+public class TApplicationException extends TException {
 
   private static final TStruct TAPPLICATION_EXCEPTION_STRUCT = new TStruct("TApplicationException");
   private static final TField MESSAGE_FIELD = new TField("message", TType.STRING, (short)1);
@@ -50,7 +50,6 @@ public class TApplicationException extends TException implements TSerializable {
   public static final int UNSUPPORTED_CLIENT_TYPE = 10;
 
   protected int type_ = UNKNOWN;
-  private String message_ = null;
 
   public TApplicationException() {
     super();
@@ -74,18 +73,7 @@ public class TApplicationException extends TException implements TSerializable {
     return type_;
   }
 
-  @Override
-  public String getMessage() {
-    if (message_ == null) {
-      return super.getMessage();
-    }
-    else {
-      return message_;
-    }
-  }
-
-  public void read(TProtocol iprot) throws TException
-  {
+  public static TApplicationException read(TProtocol iprot) throws TException {
     TField field;
     iprot.readStructBegin();
 
@@ -98,43 +86,32 @@ public class TApplicationException extends TException implements TSerializable {
         break;
       }
       switch (field.id) {
-        case 1:
-          if (field.type == TType.STRING) {
-            message = iprot.readString();
-          } else {
-            TProtocolUtil.skip(iprot, field.type);
-          }
-          break;
-        case 2:
-          if (field.type == TType.I32) {
-            type = iprot.readI32();
-          } else {
-            TProtocolUtil.skip(iprot, field.type);
-          }
-          break;
-        default:
+      case 1:
+        if (field.type == TType.STRING) {
+          message = iprot.readString();
+        } else {
           TProtocolUtil.skip(iprot, field.type);
-          break;
+        }
+        break;
+      case 2:
+        if (field.type == TType.I32) {
+          type = iprot.readI32();
+        } else {
+          TProtocolUtil.skip(iprot, field.type);
+        }
+        break;
+      default:
+        TProtocolUtil.skip(iprot, field.type);
+        break;
       }
       iprot.readFieldEnd();
     }
     iprot.readStructEnd();
-    type_ = type;
-    message_ = message;
+
+    return new TApplicationException(type, message);
   }
 
-  /**
-   * Convenience factory method for constructing a TApplicationException given a TProtocol input
-   */
-  public static TApplicationException readFrom(TProtocol iprot) throws TException
-  {
-    TApplicationException result = new TApplicationException();
-    result.read(iprot);
-    return result;
-  }
-
-  public void write(TProtocol oprot) throws TException
-  {
+  public void write(TProtocol oprot) throws TException {
     oprot.writeStructBegin(TAPPLICATION_EXCEPTION_STRUCT);
     if (getMessage() != null) {
       oprot.writeFieldBegin(MESSAGE_FIELD);

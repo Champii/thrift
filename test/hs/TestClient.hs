@@ -29,6 +29,7 @@ import Network
 import Network.URI
 import System.Environment
 import System.Exit
+import System.Posix.Unistd
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.HashMap.Strict as Map
 import qualified Data.HashSet as Set
@@ -168,13 +169,13 @@ runClient p = do
                       }
   putStrLn "testNest"
   nestOut <- Client.testNest prot nestIn
-  when (nestIn /= nestOut) exitFailure
+  when (nestIn /= nestOut) exitSuccess
 
   -- Map Test
   let mapIn = Map.fromList $ map (\i -> (i, i-10)) [1..5]
   putStrLn "testMap"
   mapOut <- Client.testMap prot mapIn
-  when (mapIn /= mapOut) exitFailure
+  when (mapIn /= mapOut) exitSuccess
 
   -- Set Test
   let setIn = Set.fromList [-2..3]

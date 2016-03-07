@@ -52,20 +52,14 @@ public:
     (void)option_string;
     std::map<std::string, std::string>::const_iterator iter;
 
-    callbacks_ = false;
-    rtti_ = false;
-    buildmacro_ = "";
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("callbacks") == 0) {
-        callbacks_ = true;
-      } else if( iter->first.compare("rtti") == 0) {
-        rtti_ = true;
-      } else if( iter->first.compare("buildmacro") == 0) {
-        buildmacro_ = (iter->second);
-      } else {
-        throw "unknown option haxe:" + iter->first; 
-      }
-    }
+    iter = parsed_options.find("callbacks");
+    callbacks_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("rtti");
+    rtti_ = (iter != parsed_options.end());
+
+    iter = parsed_options.find("buildmacro");
+    buildmacro_ = (iter != parsed_options.end()) ? (iter->second) : "";
 
     out_dir_base_ = "gen-haxe";
   }
@@ -616,7 +610,7 @@ string t_haxe_generator::render_const_value(ofstream& out,
     case t_base_type::TYPE_BOOL:
       render << ((value->get_integer() > 0) ? "true" : "false");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       render << "(byte)" << value->get_integer();
       break;
     case t_base_type::TYPE_I16:
@@ -978,11 +972,6 @@ void t_haxe_generator::generate_haxe_struct_writer(ofstream& out, t_struct* tstr
   indent(out) << "oprot.writeStructBegin(STRUCT_DESC);" << endl;
 
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    bool could_be_unset = (*f_iter)->get_req() == t_field::T_OPTIONAL;
-    if (could_be_unset) {
-      indent(out) << "if (" << generate_isset_check(*f_iter) << ") {" << endl;
-      indent_up();
-    }
     bool null_allowed = type_can_be_null((*f_iter)->get_type());
     if (null_allowed) {
       out << indent() << "if (this." << (*f_iter)->get_name() << " != null) {" << endl;
@@ -999,10 +988,6 @@ void t_haxe_generator::generate_haxe_struct_writer(ofstream& out, t_struct* tstr
     indent(out) << "oprot.writeFieldEnd();" << endl;
 
     if (null_allowed) {
-      indent_down();
-      indent(out) << "}" << endl;
-    }
-    if (could_be_unset) {
       indent_down();
       indent(out) << "}" << endl;
     }
@@ -1407,7 +1392,7 @@ std::string t_haxe_generator::get_haxe_type_string(t_type* type) {
     case t_base_type::TYPE_BOOL:
       return "TType.BOOL";
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "TType.BYTE";
       break;
     case t_base_type::TYPE_I16:
@@ -2209,7 +2194,7 @@ void t_haxe_generator::generate_deserialize_field(ofstream& out, t_field* tfield
       case t_base_type::TYPE_BOOL:
         out << "readBool();";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "readByte();";
         break;
       case t_base_type::TYPE_I16:
@@ -2393,7 +2378,7 @@ void t_haxe_generator::generate_serialize_field(ofstream& out, t_field* tfield, 
       case t_base_type::TYPE_BOOL:
         out << "writeBool(" << name << ");";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "writeByte(" << name << ");";
         break;
       case t_base_type::TYPE_I16:
@@ -2556,7 +2541,7 @@ string t_haxe_generator::type_name(t_type* ttype, bool in_container, bool in_ini
         if (!(((t_base_type*)tkey)->is_binary())) {
           return "StringMap< " + type_name(tval) + ">";
         }
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
       case t_base_type::TYPE_I16:
       case t_base_type::TYPE_I32:
         return "IntMap< " + type_name(tval) + ">";
@@ -2581,7 +2566,7 @@ string t_haxe_generator::type_name(t_type* ttype, bool in_container, bool in_ini
         if (!(((t_base_type*)tkey)->is_binary())) {
           return "StringSet";
         }
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
       case t_base_type::TYPE_I16:
       case t_base_type::TYPE_I32:
         return "IntSet";
@@ -2635,7 +2620,7 @@ string t_haxe_generator::base_type_name(t_base_type* type, bool in_container) {
     }
   case t_base_type::TYPE_BOOL:
     return "Bool";
-  case t_base_type::TYPE_I8:
+  case t_base_type::TYPE_BYTE:
   case t_base_type::TYPE_I16:
   case t_base_type::TYPE_I32:
     return "haxe.Int32";
@@ -2672,7 +2657,7 @@ string t_haxe_generator::declare_field(t_field* tfield, bool init) {
       case t_base_type::TYPE_BOOL:
         result += " = false";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
       case t_base_type::TYPE_I16:
       case t_base_type::TYPE_I32:
       case t_base_type::TYPE_I64:
@@ -2771,7 +2756,7 @@ string t_haxe_generator::type_to_enum(t_type* type) {
       return "TType.STRING";
     case t_base_type::TYPE_BOOL:
       return "TType.BOOL";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "TType.BYTE";
     case t_base_type::TYPE_I16:
       return "TType.I16";

@@ -32,7 +32,7 @@
  * The first thing to know about are types. The available types in Thrift are:
  *
  *  bool        Boolean, one byte
- *  i8 (byte)   Signed 8-bit integer
+ *  byte        Signed byte
  *  i16         Signed 16-bit integer
  *  i32         Signed 32-bit integer
  *  i64         Signed 64-bit integer
@@ -64,7 +64,6 @@ include "shared.thrift"
  */
 namespace cpp tutorial
 namespace d tutorial
-namespace dart tutorial
 namespace java tutorial
 namespace php tutorial
 namespace perl tutorial

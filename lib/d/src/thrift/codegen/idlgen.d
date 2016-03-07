@@ -641,16 +641,13 @@ version (unittest) {
 }
 `);
 
-import std.algorithm;
-  static assert(structIdlString!WithDefaults.startsWith(
+  static assert(structIdlString!WithDefaults ==
 `struct WithDefaults {
   -1: string a = "asdf",
-  -2: double b = 3.141`));
-
-  static assert(structIdlString!WithDefaults.endsWith(
-`1: WithoutMeta c = {a: "foo", b: 3, },
+  -2: double b = 3.1415,
+  1: WithoutMeta c = {a: "foo", b: 3, },
 }
-`));
+`);
 
   static assert(structIdlString!OneOfEach ==
 `struct OneOfEach {

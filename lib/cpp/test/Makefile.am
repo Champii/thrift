@@ -101,7 +101,7 @@ endif
 TESTS_ENVIRONMENT= \
 	BOOST_TEST_LOG_SINK=tests.xml \
 	BOOST_TEST_LOG_LEVEL=test_suite \
-	BOOST_TEST_LOG_FORMAT=XML
+	BOOST_TEST_LOG_FORMAT=xml
 
 TESTS = \
 	$(check_PROGRAMS)
@@ -115,6 +115,7 @@ UnitTests_SOURCES = \
 	TypedefTest.cpp \
 	TServerSocketTest.cpp \
 	TServerTransportTest.cpp \
+	TestPortFixture.h \
 	TTransportCheckThrow.h
 
 if !WITH_BOOSTTHREADS
@@ -127,13 +128,11 @@ UnitTests_LDADD = \
   $(BOOST_TEST_LDADD)
 
 TInterruptTest_SOURCES = \
-	TSocketInterruptTest.cpp \
-	TSSLSocketInterruptTest.cpp
+	TSocketInterruptTest.cpp
 
 TInterruptTest_LDADD = \
   libtestgencpp.la \
   $(BOOST_TEST_LDADD) \
-  $(BOOST_FILESYSTEM_LDADD) \
   $(BOOST_CHRONO_LDADD) \
   $(BOOST_SYSTEM_LDADD) \
   $(BOOST_THREAD_LDADD)
@@ -325,9 +324,7 @@ OpenSSLManualInitTest_SOURCES = \
 
 OpenSSLManualInitTest_LDADD = \
 	$(top_builddir)/lib/cpp/libthrift.la \
-	$(BOOST_TEST_LDADD) \
-	$(OPENSSL_LDFLAGS) \
-	$(OPENSSL_LIBS)
+	$(BOOST_TEST_LDADD)
 
 #
 # Common thrift code generation rules
@@ -363,7 +360,7 @@ AM_LDFLAGS = $(BOOST_LDFLAGS)
 AM_CXXFLAGS = -Wall -Wextra -pedantic
 
 clean-local:
-	$(RM) gen-cpp/*
+	$(RM) -r gen-cpp
 
 EXTRA_DIST = \
 	concurrency \

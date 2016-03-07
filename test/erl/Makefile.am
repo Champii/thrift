@@ -18,26 +18,23 @@
 #
 
 THRIFT = $(top_builddir)/compiler/cpp/thrift
+REBAR = $(top_srcdir)/lib/erl/rebar
 
 THRIFT_FILES = $(wildcard ../*.thrift)
 
-if ERLANG_OTP16
-ERL_FLAG = erl:otp16
-else
-ERL_FLAG = erl
-endif
 # make sure ThriftTest.thrift is generated last to prevent conflicts with other *.thrift files
 .generated: $(THRIFT_FILES)
 	for f in $(THRIFT_FILES) ; do \
-	  $(THRIFT) --gen $(ERL_FLAG) -o src $$f ; \
+	  $(THRIFT) --gen erl $$f ; \
 	done ; \
-	$(THRIFT) --gen $(ERL_FLAG) -o src ../ThriftTest.thrift
+	$(THRIFT) --gen erl:legacynames LegacyNames.thrift
+	$(THRIFT) --gen erl ../ThriftTest.thrift
 	touch .generated
 
-precross: .generated
-	$(REBAR) compile
+check: .generated
+	$(REBAR) eunit
 
 clean:
 	rm -f .generated
-	rm -rf src/gen-erl
+	rm -rf gen-erl
 	$(REBAR) clean

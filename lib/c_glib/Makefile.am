@@ -38,8 +38,6 @@ libthrift_c_glib_la_SOURCES = src/thrift/c_glib/thrift.c \
                               src/thrift/c_glib/protocol/thrift_protocol_factory.c \
                               src/thrift/c_glib/protocol/thrift_binary_protocol.c \
                               src/thrift/c_glib/protocol/thrift_binary_protocol_factory.c \
-                              src/thrift/c_glib/protocol/thrift_compact_protocol.c \
-                              src/thrift/c_glib/protocol/thrift_compact_protocol_factory.c \
                               src/thrift/c_glib/transport/thrift_transport.c \
                               src/thrift/c_glib/transport/thrift_transport_factory.c \
                               src/thrift/c_glib/transport/thrift_buffered_transport_factory.c \
@@ -48,7 +46,6 @@ libthrift_c_glib_la_SOURCES = src/thrift/c_glib/thrift.c \
                               src/thrift/c_glib/transport/thrift_server_transport.c \
                               src/thrift/c_glib/transport/thrift_server_socket.c \
                               src/thrift/c_glib/transport/thrift_buffered_transport.c \
-                              src/thrift/c_glib/transport/thrift_fd_transport.c \
                               src/thrift/c_glib/transport/thrift_framed_transport.c \
                               src/thrift/c_glib/transport/thrift_memory_buffer.c \
                               src/thrift/c_glib/server/thrift_server.c \
@@ -67,13 +64,10 @@ include_protocoldir = $(include_thriftdir)/protocol
 include_protocol_HEADERS = src/thrift/c_glib/protocol/thrift_protocol.h \
                            src/thrift/c_glib/protocol/thrift_protocol_factory.h \
                            src/thrift/c_glib/protocol/thrift_binary_protocol.h \
-                           src/thrift/c_glib/protocol/thrift_binary_protocol_factory.h \
-                           src/thrift/c_glib/protocol/thrift_compact_protocol.h \
-                           src/thrift/c_glib/protocol/thrift_compact_protocol_factory.h
+                           src/thrift/c_glib/protocol/thrift_binary_protocol_factory.h
 
 include_transportdir = $(include_thriftdir)/transport
 include_transport_HEADERS = src/thrift/c_glib/transport/thrift_buffered_transport.h \
-                            src/thrift/c_glib/transport/thrift_fd_transport.h \
                             src/thrift/c_glib/transport/thrift_framed_transport.h \
                             src/thrift/c_glib/transport/thrift_memory_buffer.h \
                             src/thrift/c_glib/transport/thrift_server_socket.h \

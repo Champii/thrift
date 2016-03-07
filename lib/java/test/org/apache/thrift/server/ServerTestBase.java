@@ -92,13 +92,8 @@ public abstract class ServerTestBase extends TestCase {
     }
 
     public ByteBuffer testBinary(ByteBuffer thing) {
-      StringBuilder sb = new StringBuilder(thing.remaining() * 3);
-      thing.mark();
-      while (thing.remaining() > 0) {
-        sb.append(String.format("%02X ", thing.get()));
-      }
-      System.out.print("testBinary(" + sb.toString() + ")\n");
-      thing.reset();
+      String hexstr = "TODO: toHexString(thing)";
+	  System.out.print("testBinary(" + hexstr + ")\n");
       return thing;
     }
 
@@ -198,11 +193,31 @@ public abstract class ServerTestBase extends TestCase {
     public Map<Long, Map<Numberz,Insanity>> testInsanity(Insanity argument) {
       System.out.print("testInsanity()\n");
   
+      Xtruct hello = new Xtruct();
+      hello.string_thing = "Hello2";
+      hello.byte_thing = 2;
+      hello.i32_thing = 2;
+      hello.i64_thing = 2;
+  
+      Xtruct goodbye = new Xtruct();
+      goodbye.string_thing = "Goodbye4";
+      goodbye.byte_thing = (byte)4;
+      goodbye.i32_thing = 4;
+      goodbye.i64_thing = (long)4;
+  
+      Insanity crazy = new Insanity();
+      crazy.userMap = new HashMap<Numberz, Long>();
+      crazy.userMap.put(Numberz.EIGHT, (long)8);
+      crazy.userMap.put(Numberz.FIVE, (long)5);
+      crazy.xtructs = new ArrayList<Xtruct>();
+      crazy.xtructs.add(goodbye);
+      crazy.xtructs.add(hello);
+  
       HashMap<Numberz,Insanity> first_map = new HashMap<Numberz, Insanity>();
       HashMap<Numberz,Insanity> second_map = new HashMap<Numberz, Insanity>();;
   
-      first_map.put(Numberz.TWO, argument);
-      first_map.put(Numberz.THREE, argument);
+      first_map.put(Numberz.TWO, crazy);
+      first_map.put(Numberz.THREE, crazy);
   
       Insanity looney = new Insanity();
       second_map.put(Numberz.SIX, looney);

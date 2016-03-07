@@ -21,18 +21,13 @@
 
 #import "TProtocolDecorator.h"
 
-NS_ASSUME_NONNULL_BEGIN
+FOUNDATION_EXPORT NSString *const MULTIPLEXED_SERVICE_SEPERATOR;
 
+@interface TMultiplexedProtocol : TProtocolDecorator {
+    NSString * mServiceName;
+}
 
-extern NSString *TMultiplexedProtocolSeperator;
-
-
-@interface TMultiplexedProtocol : TProtocolDecorator
-
--(id) initWithProtocol:(id <TProtocol>)protocol
-           serviceName:(NSString *)name;
+- (id) initWithProtocol: (id <TProtocol>) protocol
+            serviceName: (NSString *) name;
 
 @end
-
-
-NS_ASSUME_NONNULL_END

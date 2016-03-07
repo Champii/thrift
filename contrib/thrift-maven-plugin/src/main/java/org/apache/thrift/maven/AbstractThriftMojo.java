@@ -93,7 +93,7 @@ abstract class AbstractThriftMojo extends AbstractMojo {
      * it will generate Java output. The main reason for this option is to be able to add options
      * to the Java generator - if you generate something else, you're on your own.
      *
-     * @parameter default-value="java"
+     * @parameter default-value="java:hashcode"
      */
     private String generator;
 
@@ -106,7 +106,7 @@ abstract class AbstractThriftMojo extends AbstractMojo {
      * Since {@code thrift} cannot access jars, thrift files in dependencies are extracted to this location
      * and deleted on exit. This directory is always cleaned during execution.
      *
-     * @parameter default-value="${project.build.directory}/thrift-dependencies"
+     * @parameter property="${project.build.directory}/thrift-dependencies"
      * @required
      */
     private File temporaryThriftFileDirectory;

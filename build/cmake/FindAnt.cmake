@@ -18,8 +18,8 @@
 #
 
 
-#  ANT_FOUND - system has Ant
-#  Ant_EXECUTABLE - the Ant executable
+#  Ant_FOUND - system has Ant
+#  Ant_EXECUTBALE - the Ant executable
 #
 # It will search the environment variable ANT_HOME if it is set
 

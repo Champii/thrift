@@ -18,34 +18,29 @@
  */
 
 #import "TBaseClient.h"
-#import "TApplicationError.h"
-
-
-@interface TBaseClient ()
-@end
-
+#import "TApplicationException.h"
+#import "TObjective-C.h"
 
 @implementation TBaseClient
 
--(NSError *) checkIncomingMessageException:(id<TProtocol>)inProtocol
+- (void) dealloc
 {
-  NSError *thriftError;
+    [inProtocol release_stub];
+    [outProtocol release_stub];
+    [super dealloc_stub];
+}
 
-  SInt32 msgType = 0;
-  if (![inProtocol readMessageBeginReturningName:nil type:&msgType sequenceID:NULL error:&thriftError]) {
-    return thriftError;
-  }
-
-  if (msgType == TMessageTypeEXCEPTION) {
-
-    thriftError = [NSError read:inProtocol];
-
-    [inProtocol readMessageEnd:NULL];
-
-    return thriftError;
-  }
-
-  return nil;
+- (TApplicationException *)checkIncomingMessageException
+{
+    int msgType = 0;
+    [inProtocol readMessageBeginReturningName: nil type: &msgType sequenceID: NULL];
+    if (msgType == TMessageType_EXCEPTION) {
+        TApplicationException * x = [TApplicationException read: inProtocol];
+        [inProtocol readMessageEnd];
+        return x;
+    }
+    
+    return nil;
 }
 
 @end

@@ -80,9 +80,3 @@ struct JavaTestHelper {
   5: required binary req_bin;
   6: optional binary opt_bin;
 }
-
-struct Binaries {
-  4: binary bin;
-  5: required binary req_bin;
-  6: optional binary opt_bin;
-}

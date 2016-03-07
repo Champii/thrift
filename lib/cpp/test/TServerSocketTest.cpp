@@ -20,6 +20,7 @@
 #include <boost/test/auto_unit_test.hpp>
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TServerSocket.h>
+#include "TestPortFixture.h"
 #include "TTransportCheckThrow.h"
 #include <iostream>
 
@@ -28,20 +29,19 @@ using apache::thrift::transport::TSocket;
 using apache::thrift::transport::TTransport;
 using apache::thrift::transport::TTransportException;
 
-BOOST_AUTO_TEST_SUITE(TServerSocketTest)
+BOOST_FIXTURE_TEST_SUITE(TServerSocketTest, TestPortFixture)
 
 BOOST_AUTO_TEST_CASE(test_bind_to_address) {
-  TServerSocket sock1("localhost", 0);
+  TServerSocket sock1("localhost", m_serverPort);
   sock1.listen();
-  int port = sock1.getPort();
-  TSocket clientSock("localhost", port);
+  TSocket clientSock("localhost", m_serverPort);
   clientSock.open();
   boost::shared_ptr<TTransport> accepted = sock1.accept();
   accepted->close();
   sock1.close();
 
   std::cout << "An error message from getaddrinfo on the console is expected:" << std::endl;
-  TServerSocket sock2("257.258.259.260", 0);
+  TServerSocket sock2("257.258.259.260", m_serverPort);
   BOOST_CHECK_THROW(sock2.listen(), TTransportException);
   sock2.close();
 }
@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(test_listen_valid_port) {
 }
 
 BOOST_AUTO_TEST_CASE(test_close_before_listen) {
-  TServerSocket sock1("localhost", 0);
+  TServerSocket sock1("localhost", m_serverPort);
   sock1.close();
 }
 

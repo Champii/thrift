@@ -17,7 +17,7 @@
 # under the License.
 #
 
-SUBDIRS = json xml 
+SUBDIRS =
 PRECROSS_TARGET =
 
 if WITH_CPP
@@ -65,17 +65,12 @@ if WITH_PHP
 SUBDIRS += php
 endif
 
-if WITH_DART
-SUBDIRS += dart
-endif
-
 if WITH_GO
 SUBDIRS += go
 endif
 
 if WITH_D
 SUBDIRS += d
-PRECROSS_TARGET += precross-d
 endif
 
 if WITH_NODEJS
@@ -93,7 +88,6 @@ EXTRA_DIST = \
 	as3 \
 	cocoa \
 	d \
-	dart \
 	delphi \
 	haxe \
 	javame \

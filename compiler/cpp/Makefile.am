@@ -32,12 +32,14 @@ noinst_LIBRARIES = libparse.a
 thrift_OBJDIR = obj
 
 thrift_SOURCES = src/main.cc \
+                 src/md5.c \
                  src/generate/t_generator.cc \
                  src/generate/t_generator_registry.h \
                  src/globals.h \
                  src/main.h \
                  src/platform.h \
                  src/logging.h \
+                 src/md5.h \
                  src/audit/t_audit.cpp \
                  src/audit/t_audit.h \
                  src/parse/t_doc.h \
@@ -72,7 +74,6 @@ thrift_SOURCES += src/generate/t_c_glib_generator.cc \
                   src/generate/t_java_generator.cc \
                   src/generate/t_json_generator.cc \
                   src/generate/t_as3_generator.cc \
-                  src/generate/t_dart_generator.cc \
                   src/generate/t_haxe_generator.cc \
                   src/generate/t_csharp_generator.cc \
                   src/generate/t_py_generator.cc \
@@ -81,12 +82,10 @@ thrift_SOURCES += src/generate/t_c_glib_generator.cc \
                   src/generate/t_php_generator.cc \
                   src/generate/t_erl_generator.cc \
                   src/generate/t_cocoa_generator.cc \
-                  src/generate/t_swift_generator.cc \
                   src/generate/t_st_generator.cc \
                   src/generate/t_ocaml_generator.cc \
                   src/generate/t_hs_generator.cc \
                   src/generate/t_xsd_generator.cc \
-                  src/generate/t_xml_generator.cc \
                   src/generate/t_html_generator.cc \
                   src/generate/t_js_generator.cc \
                   src/generate/t_javame_generator.cc \

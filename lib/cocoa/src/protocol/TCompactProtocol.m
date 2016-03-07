@@ -18,13 +18,14 @@
  */
 
 #import "TCompactProtocol.h"
-#import "TProtocolError.h"
+#import "TObjective-C.h"
+#import "TProtocolException.h"
 
-static const UInt8 COMPACT_PROTOCOL_ID = 0x82;
-static const UInt8 COMPACT_VERSION = 1;
-static const UInt8 COMPACT_VERSION_MASK = 0x1F; // 0001 1111
-static const UInt8 COMPACT_TYPE_MASK = 0xE0; // 1110 0000
-static const UInt8 COMPACT_TYPE_BITS = 0x07; // 0000 0111
+static const uint8_t COMPACT_PROTOCOL_ID = 0x82;
+static const uint8_t COMPACT_VERSION = 1;
+static const uint8_t COMPACT_VERSION_MASK = 0x1F; // 0001 1111
+static const uint8_t COMPACT_TYPE_MASK = 0xE0; // 1110 0000
+static const uint8_t COMPACT_TYPE_BITS = 0x07; // 0000 0111
 static const int COMPACT_TYPE_SHIFT_AMOUNT = 5;
 
 enum {
@@ -45,442 +46,322 @@ enum {
 
 @implementation TCompactProtocolFactory
 
-+(TCompactProtocolFactory *) sharedFactory
++ (TCompactProtocolFactory *) sharedFactory
 {
-  static TCompactProtocolFactory *gSharedFactory = nil;
+  static TCompactProtocolFactory * gSharedFactory = nil;
   if (gSharedFactory == nil) {
     gSharedFactory = [[TCompactProtocolFactory alloc] init];
   }
-
+  
   return gSharedFactory;
 }
 
--(NSString *) protocolName
+- (TCompactProtocol *) newProtocolOnTransport: (id <TTransport>) transport
 {
-  return @"compact";
-}
-
--(TCompactProtocol *) newProtocolOnTransport:(id <TTransport>)transport
-{
-  return [[TCompactProtocol alloc] initWithTransport:transport];
+  return [[TCompactProtocol alloc] initWithTransport: transport];
 }
 
 @end
 
+@implementation TCompactProtocol {
+  NSMutableArray * lastField;
+  short lastFieldId;
+  id <TTransport> mTransport;
+  
+  NSString * boolFieldName;
+  NSNumber * boolFieldType;
+  NSNumber * boolFieldId;
+  NSNumber * booleanValue;
+}
 
-@interface TCompactProtocol ()
-
-@property(strong, nonatomic) id <TTransport> transport;
-
-@property(strong, nonatomic) NSMutableArray *lastField;
-@property(assign, nonatomic) short lastFieldId;
-
-@property(strong, nonatomic) NSString *boolFieldName;
-@property(strong, nonatomic) NSNumber *boolFieldType;
-@property(strong, nonatomic) NSNumber *boolFieldId;
-@property(strong, nonatomic) NSNumber *booleanValue;
-
-@property(strong, nonatomic) NSString *currentMessageName;
-
-@end
-
-
-@implementation TCompactProtocol
-
--(id) init
+- (id) init
 {
   self = [super init];
-
+  
   if (self != nil) {
-    _lastField = [[NSMutableArray alloc] init];
+    lastField = [[NSMutableArray alloc] init];
   }
-
+  
   return self;
 }
 
--(id) initWithTransport:(id <TTransport>)aTransport
+- (id) initWithTransport: (id <TTransport>) transport
 {
   self = [self init];
-
+  
   if (self != nil) {
-    _transport = aTransport;
+    mTransport = [transport retain_stub];
   }
-
+  
   return self;
 }
 
--(id <TTransport>) transport
+- (void) dealloc
 {
-  return _transport;
+  [lastField release_stub];
+  [mTransport release_stub];
+  [boolFieldName release_stub];
+  [boolFieldType release_stub];
+  [boolFieldId release_stub];
+  [booleanValue release_stub];
+  
+  [super dealloc_stub];
 }
 
--(BOOL) writeByteDirect:(UInt8)n error:(NSError *__autoreleasing *)error
+- (id <TTransport>) transport
 {
-  if (![_transport write:(UInt8 *)&n offset:0 length:1 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-  return YES;
+  return mTransport;
 }
 
--(BOOL) writeVarint32:(UInt32)n error:(NSError *__autoreleasing *)error
+- (void) writeByteDirect: (int8_t) n
 {
-  UInt8 i32buf[5] = {0};
-  UInt32 idx = 0;
+  [mTransport write: (uint8_t *)&n offset: 0 length: 1];
+}
 
+- (void)writeVarint32: (uint32_t) n
+{
+  uint8_t i32buf[5] = {0};
+  uint32_t idx = 0;
+  
   while (true) {
     if ((n & ~0x7F) == 0) {
-      i32buf[idx++] = (UInt8)n;
+      i32buf[idx++] = (uint8_t)n;
       break;
-    }
-    else {
-      i32buf[idx++] = (UInt8)((n & 0x7F) | 0x80);
+    } else {
+      i32buf[idx++] = (uint8_t)((n & 0x7F) | 0x80);
       n >>= 7;
     }
   }
-
-  if (![_transport write:i32buf offset:0 length:idx error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-
-  return YES;
+  
+  [mTransport write: i32buf offset: 0 length: idx];
 }
 
--(BOOL) writeMessageBeginWithName:(NSString *)name
-                             type:(SInt32)messageType
-                       sequenceID:(SInt32)sequenceID
-                            error:(NSError *__autoreleasing *)error
+- (void) writeMessageBeginWithName: (NSString *) name
+                              type: (int) messageType
+                        sequenceID: (int) sequenceID
 {
-  if (![self writeByteDirect:COMPACT_PROTOCOL_ID error:error]) {
-    return NO;
-  }
-  if (![self writeByteDirect:(UInt8)((COMPACT_VERSION & COMPACT_VERSION_MASK) |
-                                     ((((UInt32)messageType) << COMPACT_TYPE_SHIFT_AMOUNT) & COMPACT_TYPE_MASK)) error:error])
-  {
-    return NO;
-  }
-  if (![self writeVarint32:(UInt32)sequenceID error:error]) {
-    return NO;
-  }
-  if (![self writeString:name error:error]) {
-    return NO;
-  }
-
-  _currentMessageName = name;
-
-  return YES;
+  [self writeByteDirect: COMPACT_PROTOCOL_ID];
+  [self writeByteDirect: (uint8_t)((COMPACT_VERSION & COMPACT_VERSION_MASK) |
+                                   ((((uint32_t)messageType) << COMPACT_TYPE_SHIFT_AMOUNT) & COMPACT_TYPE_MASK))];
+  [self writeVarint32: (uint32_t)sequenceID];
+  [self writeString: name];
 }
 
--(BOOL) writeStructBeginWithName:(NSString *)name error:(NSError *__autoreleasing *)error
+- (void) writeStructBeginWithName: (NSString *) name
 {
-  [_lastField addObject:@(_lastFieldId)];
-  _lastFieldId = 0;
-  return YES;
+  [lastField addObject: [NSNumber numberWithShort: lastFieldId]];
+  lastFieldId = 0;
 }
 
--(BOOL) writeStructEnd:(NSError *__autoreleasing *)error
+- (void) writeStructEnd
 {
-  _lastFieldId = [_lastField.lastObject shortValue];
-  [_lastField removeLastObject];
-  return YES;
+  lastFieldId = [[lastField lastObject] shortValue];
+  [lastField removeLastObject];
 }
 
--(BOOL) writeFieldBeginWithName:(NSString *)name
-                           type:(SInt32)fieldType
-                        fieldID:(SInt32)fieldID
-                          error:(NSError *__autoreleasing *)error
+- (void) writeFieldBeginWithName: (NSString *) name
+                            type: (int) fieldType
+                         fieldID: (int) fieldID
 {
-  if (fieldType == TTypeBOOL) {
-    _boolFieldName = [name copy];
-    _boolFieldType = @(fieldType);
-    _boolFieldId = @(fieldID);
-    return YES;
-  }
-  else {
-    return [self writeFieldBeginInternalWithName:name
-                                            type:fieldType
-                                         fieldID:fieldID
-                                    typeOverride:0xFF
-                                           error:error];
+  if (fieldType == TType_BOOL) {
+    boolFieldName = [name copy];
+    boolFieldType = [[NSNumber numberWithInt: fieldType] retain_stub];
+    boolFieldId = [[NSNumber numberWithInt: fieldID] retain_stub];
+  } else {
+    [self writeFieldBeginInternalWithName: name
+                                     type: fieldType
+                                  fieldID: fieldID
+                             typeOverride: 0xFF];
   }
 }
 
--(BOOL) writeFieldBeginInternalWithName:(NSString *)name
-                                   type:(SInt32)fieldType
-                                fieldID:(SInt32)fieldID
-                           typeOverride:(UInt8)typeOverride
-                                  error:(NSError *__autoreleasing *)error
+- (void) writeFieldBeginInternalWithName: (NSString *) name
+                                    type: (int) fieldType
+                                 fieldID: (int) fieldID
+                            typeOverride: (uint8_t) typeOverride
 {
-  UInt8 typeToWrite = typeOverride == 0xFF ? [self compactTypeForTType:fieldType] : typeOverride;
-
+  uint8_t typeToWrite = typeOverride == 0xFF ? [self compactTypeForTType: fieldType] : typeOverride;
+  
   // check if we can use delta encoding for the field id
-  if (fieldID > _lastFieldId && fieldID - _lastFieldId <= 15) {
+  if (fieldID > lastFieldId && fieldID - lastFieldId <= 15) {
     // Write them together
-    if (![self writeByteDirect:(fieldID - _lastFieldId) << 4 | typeToWrite error:error]) {
-      return NO;
-    }
-  }
-  else {
+    [self writeByteDirect: (fieldID - lastFieldId) << 4 | typeToWrite];
+  } else {
     // Write them separate
-    if (![self writeByteDirect:typeToWrite error:error]) {
-      return NO;
-    }
-    if (![self writeI16:fieldID error:error]) {
-      return NO;
-    }
+    [self writeByteDirect: typeToWrite];
+    [self writeI16: fieldID];
   }
-
-  _lastFieldId = fieldID;
-
-  return YES;
+  
+  lastFieldId = fieldID;
 }
 
--(BOOL) writeFieldStop:(NSError *__autoreleasing *)error
+- (void) writeFieldStop
 {
-  return [self writeByteDirect:TCType_STOP error:error];
+  [self writeByteDirect: TCType_STOP];
 }
 
--(BOOL) writeMapBeginWithKeyType:(SInt32)keyType
-                       valueType:(SInt32)valueType
-                            size:(SInt32)size
-                           error:(NSError *__autoreleasing *)error
+- (void) writeMapBeginWithKeyType: (int) keyType
+                        valueType: (int) valueType
+                             size: (int) size
 {
   if (size == 0) {
-    if (![self writeByteDirect:0 error:error]) {
-      return NO;
-    }
+    [self writeByteDirect: 0];
+  } else {
+    [self writeVarint32: (uint32_t)size];
+    [self writeByteDirect: [self compactTypeForTType: keyType] << 4 | [self compactTypeForTType: valueType]];
   }
-  else {
-    if (![self writeVarint32:(UInt32)size error:error]) {
-      return NO;
-    }
-    if (![self writeByteDirect:[self compactTypeForTType:keyType] << 4 | [self compactTypeForTType:valueType] error:error]) {
-      return NO;
-    }
-  }
-  return YES;
 }
 
--(BOOL) writeListBeginWithElementType:(SInt32)elementType
-                                 size:(SInt32)size
-                                error:(NSError *__autoreleasing *)error
+- (void) writeListBeginWithElementType: (int) elementType
+                                  size: (int) size
 {
-  return [self writeCollectionBeginWithElementType:elementType size:size error:error];
+  [self writeCollectionBeginWithElementType: elementType size: size];
 }
 
--(BOOL) writeSetBeginWithElementType:(SInt32)elementType
-                                size:(SInt32)size
-                               error:(NSError *__autoreleasing *)error
+- (void) writeSetBeginWithElementType: (int) elementType
+                                 size: (int) size
 {
-  return [self writeCollectionBeginWithElementType:elementType size:size error:error];
+  [self writeCollectionBeginWithElementType: elementType size: size];
 }
 
--(BOOL) writeBool:(BOOL)b error:(NSError *__autoreleasing *)error
+- (void) writeBool: (BOOL) b
 {
-  BOOL result;
-  if (_boolFieldId != nil && _boolFieldName != nil && _boolFieldType != nil) {
+  if (boolFieldId != nil && boolFieldName != nil && boolFieldType != nil) {
     // we haven't written the field header yet
-    result = [self writeFieldBeginInternalWithName:_boolFieldName
-                                              type:_boolFieldType.intValue
-                                           fieldID:_boolFieldId.intValue
-                                      typeOverride:b ? TCType_BOOLEAN_TRUE : TCType_BOOLEAN_FALSE
-                                             error:error];
-    _boolFieldId = nil;
-    _boolFieldName = nil;
-    _boolFieldType = nil;
-  }
-  else {
+    [self writeFieldBeginInternalWithName: boolFieldName
+                                     type: [boolFieldType intValue]
+                                  fieldID: [boolFieldId intValue]
+                             typeOverride: b ? TCType_BOOLEAN_TRUE : TCType_BOOLEAN_FALSE];
+    
+    [boolFieldId release_stub];
+    [boolFieldName release_stub];
+    [boolFieldType release_stub];
+    
+    boolFieldId = nil;
+    boolFieldName = nil;
+    boolFieldType = nil;
+  } else {
     // we're not part of a field, so just Write the value.
-    result = [self writeByteDirect:b ? TCType_BOOLEAN_TRUE : TCType_BOOLEAN_FALSE error:error];
+    [self writeByteDirect: b ? TCType_BOOLEAN_TRUE : TCType_BOOLEAN_FALSE];
   }
-  return result;
 }
 
--(BOOL) writeByte:(UInt8)value error:(NSError *__autoreleasing *)error
+- (void) writeByte: (uint8_t) value
 {
-  return [self writeByteDirect:value error:error];
+  [self writeByteDirect: value];
 }
 
--(BOOL) writeI16:(SInt16)value error:(NSError *__autoreleasing *)error
+- (void) writeI16: (int16_t) value
 {
-  return [self writeVarint32:[self i32ToZigZag:value] error:error];
+  [self writeVarint32: [self i32ToZigZag: value]];
 }
 
--(BOOL) writeI32:(SInt32)value error:(NSError *__autoreleasing *)error
+- (void) writeI32: (int32_t) value
 {
-  return [self writeVarint32:[self i32ToZigZag:value] error:error];
+  [self writeVarint32: [self i32ToZigZag: value]];
 }
 
--(BOOL) writeI64:(SInt64)value error:(NSError *__autoreleasing *)error
+- (void) writeI64: (int64_t) value
 {
-  return [self writeVarint64:[self i64ToZigZag:value] error:error];
+  [self writeVarint64: [self i64ToZigZag: value]];
 }
 
--(BOOL) writeDouble:(double)value error:(NSError *__autoreleasing *)error
+- (void) writeDouble: (double) value
 {
-  // Safe bit-casting double->uint64
-
-  UInt64 bits = 0;
+  //Safe bit-casting double->uint64
+  
+  uint64_t bits = 0;
   memcpy(&bits, &value, 8);
-
+  
   bits = OSSwapHostToLittleInt64(bits);
-
-  if (![_transport write:(UInt8 *)&bits offset:0 length:8 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-
-  return YES;
+  
+  [mTransport write: (uint8_t *)&bits offset: 0 length: 8];
 }
 
--(BOOL) writeString:(NSString *)value error:(NSError *__autoreleasing *)error
+- (void) writeString: (NSString *) value
 {
-  return [self writeBinary:[value dataUsingEncoding:NSUTF8StringEncoding] error:error];
+  [self writeBinary: [value dataUsingEncoding: NSUTF8StringEncoding]];
 }
 
--(BOOL) writeBinary:(NSData *)data error:(NSError *__autoreleasing *)error
+- (void) writeBinary: (NSData *) data
 {
-  if (![self writeVarint32:(UInt32)data.length error:error]) {
-    return NO;
-  }
-  if (![_transport write:data.bytes offset:0 length:(UInt32)data.length error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-  return YES;
+  [self writeVarint32: (uint32_t)data.length];
+  [mTransport write: data.bytes offset: 0 length: data.length];
 }
 
--(BOOL) writeMessageEnd:(NSError *__autoreleasing *)error
-{
-  _currentMessageName = nil;
-  return YES;
-}
+- (void) writeMessageEnd {}
+- (void) writeMapEnd {}
+- (void) writeListEnd {}
+- (void) writeSetEnd {}
+- (void) writeFieldEnd {}
 
--(BOOL) writeMapEnd:(NSError *__autoreleasing *)error
+- (void) writeCollectionBeginWithElementType: (int) elementType
+                                        size: (int) size
 {
-  return YES;
-}
-
--(BOOL) writeListEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
--(BOOL) writeSetEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
--(BOOL) writeFieldEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
--(BOOL) writeCollectionBeginWithElementType:(SInt32)elementType
-                                       size:(SInt32)size
-                                      error:(NSError *__autoreleasing *)error
-{
-  UInt8 ctypeElement = [self compactTypeForTType:elementType];
-
   if (size <= 14) {
-    if (![self writeByteDirect:size << 4 | ctypeElement error:error]) {
-      return NO;
-    }
+    [self writeByteDirect: size << 4 | [self compactTypeForTType: elementType]];
+  } else {
+    [self writeByteDirect: 0xf0 | [self compactTypeForTType: elementType]];
+    [self writeVarint32: (uint32_t)size];
   }
-  else {
-    if (![self writeByteDirect:0xf0 | ctypeElement error:error]) {
-      return NO;
-    }
-    if (![self writeVarint32:(UInt32)size error:error]) {
-      return NO;
-    }
-  }
-  return YES;
 }
 
--(BOOL) writeVarint64:(UInt64)n error:(NSError *__autoreleasing *)error
+- (void) writeVarint64: (uint64_t) n
 {
-  UInt8 varint64out[10] = {0};
+  uint8_t varint64out[10] = {0};
   int idx = 0;
-
+  
   while (true) {
     if ((n & ~0x7FL) == 0) {
-      varint64out[idx++] = (UInt8)n;
+      varint64out[idx++] = (uint8_t)n;
       break;
-    }
-    else {
-      varint64out[idx++] = (UInt8)((n & 0x7F) | 0x80);
+    } else {
+      varint64out[idx++] = (uint8_t)((n & 0x7F) | 0x80);
       n >>= 7;
     }
   }
-
-  if (![_transport write:varint64out offset:0 length:idx error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport write failed");
-  }
-
-  return YES;
+  
+  [mTransport write: varint64out offset: 0 length: idx];
 }
 
--(UInt32) i32ToZigZag:(SInt32)n
+- (uint32_t) i32ToZigZag: (int32_t) n
 {
   /*
-     ZigZag encoding maps signed integers to unsigned integers so that
-     numbers with a small absolute value (for instance, -1) have
-     a small varint encoded value too. It does this in a way that
-     "zig-zags" back and forth through the positive and negative integers,
-     so that -1 is encoded as 1, 1 is encoded as 2, -2 is encoded as 3, and so
-         on
+   ZigZag encoding maps signed integers to unsigned integers so that
+   numbers with a small absolute value (for instance, -1) have
+   a small varint encoded value too. It does this in a way that
+   "zig-zags" back and forth through the positive and negative integers,
+   so that -1 is encoded as 1, 1 is encoded as 2, -2 is encoded as 3, and so on
    */
-  return (UInt32)(n << 1) ^ (UInt32)(n >> 31);
+  return (uint32_t)(n << 1) ^ (uint32_t)(n >> 31);
 }
 
--(UInt64) i64ToZigZag:(SInt64)n
+- (uint64_t) i64ToZigZag: (int64_t) n
 {
-  return (UInt64)(n << 1) ^ (UInt64)(n >> 63);
+  return (uint64_t)(n << 1) ^ (uint64_t)(n >> 63);
 }
 
--(BOOL) readMessageBeginReturningName:(NSString **)pname
-                                 type:(SInt32 *)ptype
-                           sequenceID:(SInt32 *)psequenceID
-                                error:(NSError *__autoreleasing *)error
+- (void) readMessageBeginReturningName: (NSString **) pname
+                                  type: (int *) ptype
+                            sequenceID: (int *) psequenceID
 {
-  UInt8 protocolId;
-  if (![self readByte:&protocolId error:error]) {
-    return NO;
-  }
-
+  uint8_t protocolId = [self readByte];
   if (protocolId != COMPACT_PROTOCOL_ID) {
-    if (error) {
-      *error = [NSError errorWithDomain:TProtocolErrorDomain
-                                   code:TProtocolErrorUnknown
-                               userInfo:@{TProtocolErrorExtendedErrorKey: @(TProtocolExtendedErrorMismatchedProtocol),
-                                          TProtocolErrorExpectedIdKey: @(COMPACT_PROTOCOL_ID)}];
-    }
-    return NO;
+    @throw [TProtocolException exceptionWithName: @"TProtocolException"
+                                          reason: [NSString stringWithFormat: @"Expected protocol id %X but got %X", COMPACT_PROTOCOL_ID, protocolId]];
   }
-
-  UInt8 versionAndType;
-  if (![self readByte:&versionAndType error:error]) {
-    return NO;
-  }
-
-  UInt8 version = versionAndType & COMPACT_VERSION_MASK;
+  
+  uint8_t versionAndType = [self readByte];
+  uint8_t version = versionAndType & COMPACT_VERSION_MASK;
   if (version != COMPACT_VERSION) {
-    if (error) {
-      *error = [NSError errorWithDomain:TProtocolErrorDomain
-                                   code:TProtocolErrorBadVersion
-                               userInfo:@{TProtocolErrorExpectedVersionKey: @(COMPACT_VERSION)}];
-    }
-    return NO;
+    @throw [TProtocolException exceptionWithName: @"TProtocolException"
+                                          reason: [NSString stringWithFormat: @"Expected version %d but got %d", COMPACT_VERSION, version]];
   }
-
+  
   int type = (versionAndType >> COMPACT_TYPE_SHIFT_AMOUNT) & COMPACT_TYPE_BITS;
-  UInt32 sequenceID;
-  if (![self readVarint32:&sequenceID error:error]) {
-    return NO;
-  }
-  NSString *name;
-  if (![self readString:&name error:error]) {
-    return NO;
-  }
-
+  int sequenceID = (int)[self readVarint32];
+  NSString* name = [self readString];
+  
   if (ptype != NULL) {
     *ptype = type;
   }
@@ -490,74 +371,59 @@ enum {
   if (pname != NULL) {
     *pname = name;
   }
-  return YES;
 }
 
--(BOOL) readStructBeginReturningName:(NSString **)pname error:(NSError *__autoreleasing *)error
+- (void) readStructBeginReturningName: (NSString **) pname
 {
-  [_lastField addObject:@(_lastFieldId)];
-  _lastFieldId = 0;
-
+  [lastField addObject: [NSNumber numberWithShort: lastFieldId]];
+  lastFieldId = 0;
+  
   if (pname != NULL) {
     *pname = @"";
   }
-
-  return YES;
 }
 
--(BOOL) readStructEnd:(NSError *__autoreleasing *)error
+- (void) readStructEnd
 {
-  _lastFieldId = [_lastField.lastObject shortValue];
-  [_lastField removeLastObject];
-  return YES;
+  lastFieldId = [[lastField lastObject] shortValue];
+  [lastField removeLastObject];
 }
 
--(BOOL) readFieldBeginReturningName:(NSString **)pname
-                               type:(SInt32 *)pfieldType
-                            fieldID:(SInt32 *)pfieldID
-                              error:(NSError *__autoreleasing *)error
+- (void) readFieldBeginReturningName: (NSString **) pname
+                                type: (int *) pfieldType
+                             fieldID: (int *) pfieldID
 {
-  UInt8 byte;
-  if (![self readByte:&byte error:error]) {
-    return NO;
-  }
-
-  UInt8 type = byte & 0x0f;
-
+  uint8_t byte = [self readByte];
+  uint8_t type = byte & 0x0f;
+  
   // if it's a stop, then we can return immediately, as the struct is over.
   if (type == TCType_STOP) {
     if (pname != NULL) {
       *pname = @"";
     }
     if (pfieldType != NULL) {
-      *pfieldType = TTypeSTOP;
+      *pfieldType = TType_STOP;
     }
     if (pfieldID != NULL) {
       *pfieldID = 0;
     }
-    return YES;
+    return;
   }
-
+  
   short fieldId = 0;
-
+  
   // mask off the 4 MSB of the type header. it could contain a field id delta.
   short modifier = (byte & 0xf0) >> 4;
   if (modifier == 0) {
     // not a delta. look ahead for the zigzag varint field id.
-    if (![self readI16:&fieldId error:error]) {
-      return NO;
-    }
-  }
-  else {
+    fieldId = [self readI16];
+  } else {
     // has a delta. add the delta to the last Read field id.
-    fieldId = _lastFieldId + modifier;
+    fieldId = lastFieldId + modifier;
   }
-
-  UInt8 fieldType;
-  if (![self ttype:&fieldType forCompactType:type error:error]) {
-    return NO;
-  }
-
+  
+  int fieldType = [self ttypeForCompactType: type];
+  
   if (pname != NULL) {
     *pname = @"";
   }
@@ -567,47 +433,31 @@ enum {
   if (pfieldID != NULL) {
     *pfieldID = fieldId;
   }
-
+  
   // if this happens to be a boolean field, the value is encoded in the type
   if (type == TCType_BOOLEAN_TRUE ||
-      type == TCType_BOOLEAN_FALSE)
-  {
+      type == TCType_BOOLEAN_FALSE) {
     // save the boolean value in a special instance variable.
-    _booleanValue = [NSNumber numberWithBool:type == TCType_BOOLEAN_TRUE];
+    booleanValue = [[NSNumber numberWithBool: type == TCType_BOOLEAN_TRUE] retain_stub];
   }
-
+  
   // push the new field onto the field stack so we can keep the deltas going.
-  _lastFieldId = fieldId;
-
-  return YES;
+  lastFieldId = fieldId;
 }
 
--(BOOL) readMapBeginReturningKeyType:(SInt32 *)pkeyType
-                           valueType:(SInt32 *)pvalueType
-                                size:(SInt32 *)psize
-                               error:(NSError *__autoreleasing *)error
+- (void) readMapBeginReturningKeyType: (int *) pkeyType
+                            valueType: (int *) pvalueType
+                                 size: (int *) psize
 {
-  UInt8 keyAndValueType = 0;
-  UInt32 size;
-  if (![self readVarint32:&size error:error]) {
-    return NO;
-  }
+  uint8_t keyAndValueType = 0;
+  int size = (int)[self readVarint32];
   if (size != 0) {
-    if (![self readByte:&keyAndValueType error:error]) {
-      return NO;
-    }
+    keyAndValueType = [self readByte];
   }
-
-  UInt8 keyType;
-  if (![self ttype:&keyType forCompactType:keyAndValueType >> 4 error:error]) {
-    return NO;
-  }
-
-  UInt8 valueType;
-  if (![self ttype:&valueType forCompactType:keyAndValueType & 0xf error:error]) {
-    return NO;
-  }
-
+  
+  int keyType = [self ttypeForCompactType: keyAndValueType >> 4];
+  int valueType = [self ttypeForCompactType: keyAndValueType & 0xf];
+  
   if (pkeyType != NULL) {
     *pkeyType = keyType;
   }
@@ -617,366 +467,220 @@ enum {
   if (psize != NULL) {
     *psize = size;
   }
-
-  return YES;
 }
 
--(BOOL) readListBeginReturningElementType:(SInt32 *)pelementType
-                                     size:(SInt32 *)psize
-                                    error:(NSError *__autoreleasing *)error
+- (void) readListBeginReturningElementType: (int *) pelementType
+                                      size: (int *) psize
 {
-  UInt8 sizeAndType;
-  if (![self readByte:&sizeAndType error:error]) {
-    return NO;
-  }
-
-  UInt32 size = (sizeAndType >> 4) & 0x0f;
+  uint8_t size_and_type = [self readByte];
+  int size = (size_and_type >> 4) & 0x0f;
   if (size == 15) {
-    if (![self readVarint32:&size error:error]) {
-      return NO;
-    }
+    size = (int)[self readVarint32];
   }
-
-  UInt8 elementType;
-  if (![self ttype:&elementType forCompactType:sizeAndType & 0x0f error:error]) {
-    return NO;
-  }
-
+  
+  int elementType = [self ttypeForCompactType: size_and_type & 0x0f];
+  
   if (pelementType != NULL) {
     *pelementType = elementType;
   }
   if (psize != NULL) {
     *psize = size;
   }
-
-  return YES;
 }
 
--(BOOL) readSetBeginReturningElementType:(SInt32 *)pelementType
-                                    size:(SInt32 *)psize
-                                   error:(NSError *__autoreleasing *)error
+- (void) readSetBeginReturningElementType: (int *) pelementType
+                                     size: (int *) psize
 {
-  return [self readListBeginReturningElementType:pelementType size:psize error:error];
+  [self readListBeginReturningElementType: pelementType size: psize];
 }
 
--(BOOL) readBool:(BOOL *)value error:(NSError *__autoreleasing *)error
+- (BOOL) readBool
 {
-  if (_booleanValue != nil) {
-
-    BOOL result = _booleanValue.boolValue;
-    _booleanValue = nil;
-
-    *value = result;
+  if (booleanValue != nil) {
+    BOOL result = [booleanValue boolValue];
+    [booleanValue release_stub];
+    booleanValue = nil;
+    return result;
+  } else {
+    return [self readByte] == TCType_BOOLEAN_TRUE;
   }
-  else {
-
-    UInt8 result;
-    if (![self readByte:&result error:error]) {
-      return NO;
-    }
-
-    *value = result == TCType_BOOLEAN_TRUE;
-  }
-
-  return YES;
 }
 
--(BOOL) readByte:(UInt8 *)value error:(NSError *__autoreleasing *)error
+- (uint8_t) readByte
 {
-  if (![_transport readAll:value offset:0 length:1 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-  }
-  return YES;
+  uint8_t buf = 0;
+  [mTransport readAll: &buf offset: 0 length: 1];
+  return buf;
 }
 
--(BOOL) readI16:(SInt16 *)value error:(NSError *__autoreleasing *)error
+- (int16_t) readI16
 {
-  UInt32 v;
-  if (![self readVarint32:&v error:error]) {
-    return NO;
-  }
-
-  if (value) {
-    *value = (SInt16)[self zigZagToi32:v];
-  }
-
-  return YES;
+  return (int16_t)[self zigZagToi32: [self readVarint32]];
 }
 
--(BOOL) readI32:(SInt32 *)value error:(NSError *__autoreleasing *)error
+- (int32_t) readI32
 {
-  UInt32 v;
-  if (![self readVarint32:&v error:error]) {
-    return NO;
-  }
-
-  if (value) {
-    *value = [self zigZagToi32:v];
-  }
-
-  return YES;
+  return [self zigZagToi32: [self readVarint32]];
 }
 
--(BOOL) readI64:(SInt64 *)value error:(NSError *__autoreleasing *)error
+- (int64_t) readI64
 {
-  UInt64 v;
-  if (![self readVarint64:&v error:error]) {
-    return NO;
-  }
-
-  if (value) {
-    *value = [self zigZagToi64:v];
-  }
-
-  return YES;
+  return [self zigZagToi64: [self readVarint64]];
 }
 
--(BOOL) readDouble:(double *)value error:(NSError *__autoreleasing *)error
+- (double) readDouble
 {
-  UInt64 bits;
-  if (![_transport readAll:(UInt8 *)&bits offset:0 length:8 error:error]) {
-    PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-  }
-
+  uint64_t bits = 0;
+  [mTransport readAll: (uint8_t *)&bits offset: 0 length: 8];
   bits = OSSwapLittleToHostInt64(bits);
-
-  if (value) {
-    memcpy(value, &bits, sizeof(bits));
-  }
-
-  return YES;
+  
+  double result = 0;
+  memcpy(&result, &bits, 8);
+  
+  return result;
 }
 
--(BOOL) readString:(NSString *__autoreleasing *)value error:(NSError *__autoreleasing *)error
+- (NSString *) readString
 {
-  UInt32 length;
-  if (![self readVarint32:&length error:error]) {
-    return NO;
+  int length = (int)[self readVarint32];
+  if (length == 0) {
+    return @"";
   }
-
-  NSString *result;
-
-  if (length != 0) {
-
-    NSData *data;
-    if (![self readBinaryOfLength:length data:&data error:error]) {
-      return NO;
-    }
-
-    result = [[NSString alloc] initWithData:data
-                                   encoding:NSUTF8StringEncoding];
-  }
-  else {
-    result = @"";
-  }
-
-  if (value) {
-    *value = result;
-  }
-
-  return YES;
+  
+  return [[[NSString alloc] initWithData: [self readBinary: length]
+                                encoding: NSUTF8StringEncoding] autorelease_stub];
 }
 
--(BOOL) readBinary:(NSData *__autoreleasing *)value error:(NSError *__autoreleasing *)error
+- (NSData *) readBinary
 {
-  UInt32 length;
-  if (![self readVarint32:&length error:error]) {
-    return NO;
+  return [self readBinary: (int)[self readVarint32]];
+}
+
+- (NSData *) readBinary: (int) length
+{
+  if (length == 0) {
+    return [NSData data];
   }
-
-  return [self readBinaryOfLength:length data:value error:error];
+  
+  NSMutableData* buf = [NSMutableData dataWithLength: length];
+  [mTransport readAll: buf.mutableBytes offset: 0 length: length];
+  return buf;
 }
 
--(BOOL) readBinaryOfLength:(UInt32)length data:(NSData *__autoreleasing *)value error:(NSError *__autoreleasing *)error
+- (void) readMessageEnd {}
+- (void) readFieldEnd {}
+- (void) readMapEnd {}
+- (void) readListEnd {}
+- (void) readSetEnd {}
+
+- (uint32_t) readVarint32
 {
-  NSData *result;
-
-  if (length != 0) {
-
-    NSMutableData *buf = [NSMutableData dataWithLength:length];
-    if (![_transport readAll:buf.mutableBytes offset:0 length:length error:error]) {
-      PROTOCOL_TRANSPORT_ERROR(NO, error, @"Transport read failed");
-    }
-
-    result = buf;
-  }
-  else {
-
-    result = [NSData data];
-
-  }
-
-  if (value) {
-    *value = result;
-  }
-
-  return YES;
-}
-
--(BOOL) readMessageEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
--(BOOL) readFieldEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
--(BOOL) readMapEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
--(BOOL) readListEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
--(BOOL) readSetEnd:(NSError *__autoreleasing *)error
-{
-  return YES;
-}
-
--(BOOL) readVarint32:(UInt32 *)value error:(NSError *__autoreleasing *)error
-{
-  UInt32 result = 0;
+  uint32_t result = 0;
   int shift = 0;
-
+  
   while (true) {
-
-    UInt8 byte;
-    if (![self readByte:&byte error:error]) {
-      return NO;
-    }
-
-    result |= (UInt32)(byte & 0x7f) << shift;
+    uint8_t byte = [self readByte];
+    result |= (uint32_t)(byte & 0x7f) << shift;
     if (!(byte & 0x80)) {
       break;
     }
-
+    
     shift += 7;
   }
-
-  if (value) {
-    *value = result;
-  }
-
-  return YES;
+  return result;
 }
 
--(BOOL) readVarint64:(UInt64 *)value error:(NSError *__autoreleasing *)error
+- (uint64_t) readVarint64
 {
   int shift = 0;
-  UInt64 result = 0;
-
+  uint64_t result = 0;
+  
   while (true) {
-
-    UInt8 byte;
-    if (![self readByte:&byte error:error]) {
-      return NO;
-    }
-
-    result |= (UInt64)(byte & 0x7f) << shift;
+    uint8_t byte = [self readByte];
+    result |= (uint64_t)(byte & 0x7f) << shift;
     if (!(byte & 0x80)) {
       break;
     }
-
+    
     shift += 7;
   }
-
-  if (value) {
-    *value = result;
-  }
-
-  return YES;
+  
+  return result;
 }
 
--(SInt32) zigZagToi32:(UInt32)n
+- (int32_t) zigZagToi32: (uint32_t) n
 {
-  return (SInt32)(n >> 1) ^ (-(SInt32)(n & 1));
+  return (int32_t)(n >> 1) ^ (-(int32_t)(n & 1));
 }
 
--(SInt64) zigZagToi64:(UInt64)n
+- (int64_t) zigZagToi64: (uint64_t) n
 {
-  return (SInt64)(n >> 1) ^ (-(SInt64)(n & 1));
+  return (int64_t)(n >> 1) ^ (-(int64_t)(n & 1));
 }
 
--(BOOL) ttype:(UInt8 *)ttype forCompactType:(UInt8)ctype error:(NSError *__autoreleasing *)error
+- (uint8_t) ttypeForCompactType: (uint8_t) type
 {
-  switch (ctype & 0x0f) {
-  case TCType_STOP:
-    *ttype = TTypeSTOP;
-    return YES;
-
-  case TCType_BOOLEAN_FALSE:
-  case TCType_BOOLEAN_TRUE:
-    *ttype = TTypeBOOL;
-    return YES;
-
-  case TCType_BYTE:
-    *ttype = TTypeBYTE;
-    return YES;
-
-  case TCType_I16:
-    *ttype = TTypeI16;
-    return YES;
-
-  case TCType_I32:
-    *ttype = TTypeI32;
-    return YES;
-
-  case TCType_I64:
-    *ttype = TTypeI64;
-    return YES;
-
-  case TCType_DOUBLE:
-    *ttype = TTypeDOUBLE;
-    return YES;
-
-  case TCType_BINARY:
-    *ttype = TTypeSTRING;
-    return YES;
-
-  case TCType_LIST:
-    *ttype = TTypeLIST;
-    return YES;
-
-  case TCType_SET:
-    *ttype = TTypeSET;
-    return YES;
-
-  case TCType_MAP:
-    *ttype = TTypeMAP;
-    return YES;
-
-  case TCType_STRUCT:
-    *ttype = TTypeSTRUCT;
-    return YES;
-
-  default:
-    if (error) {
-      *error = [NSError errorWithDomain:TProtocolErrorDomain
-                                   code:TProtocolErrorUnknown
-                               userInfo:@{TProtocolErrorTypeKey: @((UInt8)(ctype & 0x0F))}];
-    }
-    return NO;
+  switch (type & 0x0f) {
+    case TCType_STOP:
+      return TType_STOP;
+      
+    case TCType_BOOLEAN_FALSE:
+    case TCType_BOOLEAN_TRUE:
+      return TType_BOOL;
+      
+    case TCType_BYTE:
+      return TType_BYTE;
+      
+    case TCType_I16:
+      return TType_I16;
+      
+    case TCType_I32:
+      return TType_I32;
+      
+    case TCType_I64:
+      return TType_I64;
+      
+    case TCType_DOUBLE:
+      return TType_DOUBLE;
+      
+    case TCType_BINARY:
+      return TType_STRING;
+      
+    case TCType_LIST:
+      return TType_LIST;
+      
+    case TCType_SET:
+      return TType_SET;
+      
+    case TCType_MAP:
+      return TType_MAP;
+      
+    case TCType_STRUCT:
+      return TType_STRUCT;
+      
+    default:
+      @throw [TProtocolException exceptionWithName: @"TProtocolException"
+                                            reason: [NSString stringWithFormat: @"Don't know what type: %d", (uint8_t)(type & 0x0F)]];
   }
 }
 
--(UInt8) compactTypeForTType:(UInt8)ttype
+- (uint8_t) compactTypeForTType: (uint8_t) ttype
 {
-  static UInt8 ttypeToCompactType[] = {
-    [TTypeSTOP] = TCType_STOP,
-    [TTypeBOOL] = TCType_BOOLEAN_FALSE,
-    [TTypeBYTE] = TCType_BYTE,
-    [TTypeDOUBLE] = TCType_DOUBLE,
-    [TTypeI16] = TCType_I16,
-    [TTypeI32] = TCType_I32,
-    [TTypeI64] = TCType_I64,
-    [TTypeSTRING] = TCType_BINARY,
-    [TTypeSTRUCT] = TCType_STRUCT,
-    [TTypeMAP] = TCType_MAP,
-    [TTypeSET] = TCType_SET,
-    [TTypeLIST] = TCType_LIST
+  static uint8_t ttypeToCompactType[] = {
+    [TType_STOP] = TCType_STOP,
+    [TType_BOOL] = TCType_BOOLEAN_FALSE,
+    [TType_BYTE] = TCType_BYTE,
+    [TType_DOUBLE] = TCType_DOUBLE,
+    [TType_I16] = TCType_I16,
+    [TType_I32] = TCType_I32,
+    [TType_I64] = TCType_I64,
+    [TType_STRING] = TCType_BINARY,
+    [TType_STRUCT] = TCType_STRUCT,
+    [TType_MAP] = TCType_MAP,
+    [TType_SET] = TCType_SET,
+    [TType_LIST] = TCType_LIST
   };
-
+  
   return ttypeToCompactType[ttype];
 }
 

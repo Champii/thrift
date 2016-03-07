@@ -16,6 +16,7 @@
     </ClInclude>
     <ClInclude Include="src\globals.h" />
     <ClInclude Include="src\main.h" />
+    <ClInclude Include="src\md5.h" />
     <ClInclude Include="src\parse\t_base_type.h">
       <Filter>parse</Filter>
     </ClInclude>
@@ -110,9 +111,6 @@
     <ClCompile Include="src\generate\t_d_generator.cc">
       <Filter>generate</Filter>
     </ClCompile>
-    <ClCompile Include="src\generate\t_dart_generator.cc">
-      <Filter>generate</Filter>
-    </ClCompile>
     <ClCompile Include="src\generate\t_delphi_generator.cc">
       <Filter>generate</Filter>
     </ClCompile>
@@ -164,16 +162,11 @@
     <ClCompile Include="src\generate\t_st_generator.cc">
       <Filter>generate</Filter>
     </ClCompile>
-    <ClCompile Include="src\generate\t_swift_generator.cc">
-      <Filter>generate</Filter>
-    </ClCompile>
     <ClCompile Include="src\generate\t_xsd_generator.cc">
       <Filter>generate</Filter>
     </ClCompile>
-    <ClCompile Include="src\generate\t_xml_generator.cc">
-      <Filter>generate</Filter>
-    </ClCompile>
     <ClCompile Include="src\main.cc" />
+    <ClCompile Include="src\md5.c" />
     <ClCompile Include="src\parse\parse.cc">
       <Filter>parse</Filter>
     </ClCompile>

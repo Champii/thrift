@@ -18,18 +18,13 @@
  */
 package org.apache.thrift.transport;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import junit.framework.TestCase;
+
+import java.io.*;
 import java.util.Arrays;
 import java.util.zip.DataFormatException;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
-
-import junit.framework.TestCase;
 
 public class TestTZlibTransport extends TestCase {
 
@@ -53,21 +48,6 @@ public class TestTZlibTransport extends TestCase {
     trans.write(byteSequence(0, 245));
     countingTrans.close();
     trans.close();
-  }
-
-  public void testCloseOpen() throws TTransportException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    TTransport trans = getTransport(new TIOStreamTransport(baos));
-    byte[] uncompressed = byteSequence(0, 245);
-    trans.write(uncompressed);
-    trans.close();
-    final byte[] compressed = baos.toByteArray();
-
-    final byte[] buf = new byte[255];
-    TTransport transRead = getTransport(new TIOStreamTransport(new ByteArrayInputStream(compressed)));
-    int readBytes = transRead.read(buf, 0, buf.length);
-    assertEquals(uncompressed.length, readBytes);
-    transRead.close();
   }
 
   public void testRead() throws IOException, TTransportException {

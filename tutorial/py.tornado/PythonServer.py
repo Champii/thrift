@@ -19,11 +19,10 @@
 # under the License.
 #
 
-import glob
 import sys
-
+import glob
 sys.path.append('gen-py.tornado')
-sys.path.insert(0, glob.glob('../../lib/py/build/lib*')[0])
+sys.path.insert(0, glob.glob('../../lib/py/build/lib.*')[0])
 
 from tutorial import Calculator
 from tutorial.ttypes import Operation, InvalidOperation
@@ -31,7 +30,10 @@ from tutorial.ttypes import Operation, InvalidOperation
 from shared.ttypes import SharedStruct
 
 from thrift import TTornado
+from thrift.transport import TSocket
+from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
+from thrift.server import TServer
 
 from tornado import ioloop
 
@@ -40,15 +42,16 @@ class CalculatorHandler(object):
     def __init__(self):
         self.log = {}
 
-    def ping(self):
-        print("ping()")
+    def ping(self, callback):
+        print "ping()"
+        callback()
 
-    def add(self, n1, n2):
-        print("add({}, {})".format(n1, n2))
-        return n1 + n2
+    def add(self, n1, n2, callback):
+        print "add({}, {})".format(n1, n2)
+        callback(n1 + n2)
 
-    def calculate(self, logid, work):
-        print("calculate({}, {})".format(logid, work))
+    def calculate(self, logid, work, callback):
+        print "calculate({}, {})".format(logid, work)
 
         if work.op == Operation.ADD:
             val = work.num1 + work.num2
@@ -73,14 +76,15 @@ class CalculatorHandler(object):
         log.key = logid
         log.value = '%d' % (val)
         self.log[logid] = log
-        return val
+        callback(val)
 
-    def getStruct(self, key):
-        print("getStruct({})".format(key))
-        return self.log[key]
+    def getStruct(self, key, callback):
+        print "getStruct({})".format(key)
+        callback(self.log[key])
 
-    def zip(self):
-        print("zip()")
+    def zip(self, callback):
+        print "zip()"
+        callback()
 
 
 def main():
@@ -89,11 +93,11 @@ def main():
     pfactory = TBinaryProtocol.TBinaryProtocolFactory()
     server = TTornado.TTornadoServer(processor, pfactory)
 
-    print("Starting the server...")
+    print "Starting the server..."
     server.bind(9090)
     server.start(1)
     ioloop.IOLoop.instance().start()
-    print("done.")
+    print "done."
 
 
 if __name__ == "__main__":

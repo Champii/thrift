@@ -49,14 +49,8 @@ public:
                    const std::map<std::string, std::string>& parsed_options,
                    const std::string& option_string)
     : t_oop_generator(program) {
+    (void)parsed_options;
     (void)option_string;
-    std::map<std::string, std::string>::const_iterator iter;
-
-    /* no options yet */
-    for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      throw "unknown option perl:" + iter->first; 
-    }
-
     out_dir_base_ = "gen-perl";
     escape_['$'] = "\\$";
     escape_['@'] = "\\@";
@@ -330,7 +324,7 @@ string t_perl_generator::render_const_value(t_type* type, t_const_value* value) 
     case t_base_type::TYPE_BOOL:
       out << (value->get_integer() > 0 ? "1" : "0");
       break;
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
     case t_base_type::TYPE_I32:
     case t_base_type::TYPE_I64:
@@ -1185,7 +1179,7 @@ void t_perl_generator::generate_deserialize_field(ofstream& out,
       case t_base_type::TYPE_BOOL:
         out << "readBool(\\$" << name << ");";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "readByte(\\$" << name << ");";
         break;
       case t_base_type::TYPE_I16:
@@ -1238,9 +1232,9 @@ void t_perl_generator::generate_deserialize_container(ofstream& out, t_type* tty
   string etype = tmp("_etype");
 
   t_field fsize(g_type_i32, size);
-  t_field fktype(g_type_i8, ktype);
-  t_field fvtype(g_type_i8, vtype);
-  t_field fetype(g_type_i8, etype);
+  t_field fktype(g_type_byte, ktype);
+  t_field fvtype(g_type_byte, vtype);
+  t_field fetype(g_type_byte, etype);
 
   out << indent() << "my $" << size << " = 0;" << endl;
 
@@ -1376,7 +1370,7 @@ void t_perl_generator::generate_serialize_field(ofstream& out, t_field* tfield, 
       case t_base_type::TYPE_BOOL:
         out << "writeBool($" << name << ");";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
         out << "writeByte($" << name << ");";
         break;
       case t_base_type::TYPE_I16:
@@ -1532,7 +1526,7 @@ string t_perl_generator::declare_field(t_field* tfield, bool init, bool obj) {
       case t_base_type::TYPE_BOOL:
         result += " = 0";
         break;
-      case t_base_type::TYPE_I8:
+      case t_base_type::TYPE_BYTE:
       case t_base_type::TYPE_I16:
       case t_base_type::TYPE_I32:
       case t_base_type::TYPE_I64:
@@ -1619,7 +1613,7 @@ string t_perl_generator::type_to_enum(t_type* type) {
       return "TType::STRING";
     case t_base_type::TYPE_BOOL:
       return "TType::BOOL";
-    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_BYTE:
       return "TType::BYTE";
     case t_base_type::TYPE_I16:
       return "TType::I16";

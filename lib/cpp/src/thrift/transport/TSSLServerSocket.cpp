@@ -48,12 +48,7 @@ TSSLServerSocket::TSSLServerSocket(int port,
 }
 
 boost::shared_ptr<TSocket> TSSLServerSocket::createSocket(THRIFT_SOCKET client) {
-  if (interruptableChildren_) {
-      return factory_->createSocket(client, pChildInterruptSockReader_);
-
-  } else {
-      return factory_->createSocket(client);
-  }
+  return factory_->createSocket(client);
 }
 }
 }

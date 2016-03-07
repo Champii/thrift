@@ -35,7 +35,6 @@ use Thrift::BufferedTransport;
 use Thrift::FramedTransport;
 use Thrift::SSLSocket;
 use Thrift::Socket;
-use Thrift::UnixSocket;
 
 use ThriftTest::ThriftTest;
 use ThriftTest::Types;
@@ -49,7 +48,6 @@ Usage: $0 [OPTIONS]
 Options:                          (default)
   --cert                                       Certificate to use.
                                                Required if using --ssl.
-  --domain-socket <file>                       Use a unix domain socket.
   --help                                       Show usage.
   --port <portnum>                9090         Port to use.
   --protocol {binary}             binary       Protocol to use.
@@ -67,7 +65,6 @@ my %opts = (
 
 GetOptions(\%opts, qw (
     cert=s
-    domain-socket=s
     help
     host=s
     port=i
@@ -87,9 +84,7 @@ if ($opts{ssl} and not defined $opts{cert}) {
 }
 
 my $socket = undef;
-if ($opts{"domain-socket"}) {
-    $socket = new Thrift::UnixSocket($opts{"domain-socket"});
-} elsif ($opts{ssl}) {
+if ($opts{ssl}) {
 	$socket = new Thrift::SSLSocket($opts{host}, $opts{port});
 } else {
 	$socket = new Thrift::Socket($opts{host}, $opts{port});

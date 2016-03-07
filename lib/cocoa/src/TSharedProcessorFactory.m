@@ -19,31 +19,34 @@
 
 
 #import "TSharedProcessorFactory.h"
-
-
-@interface TSharedProcessorFactory ()
-
-@property(strong, nonatomic) id<TProcessor> sharedProcessor;
-
-@end
+#import "TObjective-C.h"
 
 
 @implementation TSharedProcessorFactory
 
 
--(id) initWithSharedProcessor:(id<TProcessor>)sharedProcessor
+- (id) initWithSharedProcessor: (id<TProcessor>) sharedProcessor
 {
   self = [super init];
-  if (self) {
-    _sharedProcessor = sharedProcessor;
+  if (!self) {
+    return nil;
   }
-
+  
+  mSharedProcessor = [sharedProcessor retain_stub];
   return self;
 }
 
--(id<TProcessor>) processorForTransport:(id<TTransport>)transport
+
+- (void) dealloc
 {
-  return _sharedProcessor;
+  [mSharedProcessor release_stub];
+  [super dealloc_stub];
+}
+
+
+- (id<TProcessor>) processorForTransport: (id<TTransport>) transport
+{
+  return [[mSharedProcessor retain_stub] autorelease_stub];
 }
 
 @end

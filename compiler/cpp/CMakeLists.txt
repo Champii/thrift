@@ -47,13 +47,15 @@ set(libparse_SOURCES
 add_library(libparse STATIC ${libparse_SOURCES})
 
 # Create the thrift compiler
-set( thrift_SOURCES
+set( thrift_SOURCES 
     src/main.cc
+    src/md5.c
     src/generate/t_generator.cc
     src/generate/t_generator_registry.h
     src/globals.h
     src/main.h
     src/platform.h
+    src/md5.h
     src/audit/t_audit.cpp
     src/parse/t_doc.h
     src/parse/t_type.h
@@ -98,7 +100,6 @@ THRIFT_ADD_COMPILER(c_glib  "Enable compiler for C with Glib" ON)
 THRIFT_ADD_COMPILER(cpp     "Enable compiler for C++" ON)
 THRIFT_ADD_COMPILER(java    "Enable compiler for Java"   ON)
 THRIFT_ADD_COMPILER(as3     "Enable compiler for ActionScript 3" ON)
-THRIFT_ADD_COMPILER(dart    "Enable compiler for Dart" ON)
 THRIFT_ADD_COMPILER(haxe    "Enable compiler for Haxe" ON)
 THRIFT_ADD_COMPILER(csharp  "Enable compiler for C#" ON)
 THRIFT_ADD_COMPILER(py      "Enable compiler for Python 2.0" ON)
@@ -107,7 +108,6 @@ THRIFT_ADD_COMPILER(perl    "Enable compiler for Perl" ON)
 THRIFT_ADD_COMPILER(php     "Enable compiler for PHP" ON)
 THRIFT_ADD_COMPILER(erl     "Enable compiler for Erlang" ON)
 THRIFT_ADD_COMPILER(cocoa   "Enable compiler for Cocoa Objective-C" ON)
-THRIFT_ADD_COMPILER(swift   "Enable compiler for Cocoa Swift" ON)
 THRIFT_ADD_COMPILER(st      "Enable compiler for Smalltalk" ON)
 THRIFT_ADD_COMPILER(ocaml   "Enable compiler for OCaml" ON)
 THRIFT_ADD_COMPILER(hs      "Enable compiler for Haskell" ON)
@@ -120,8 +120,6 @@ THRIFT_ADD_COMPILER(delphi  "Enable compiler for Delphi" ON)
 THRIFT_ADD_COMPILER(go      "Enable compiler for Go" ON)
 THRIFT_ADD_COMPILER(d       "Enable compiler for D" ON)
 THRIFT_ADD_COMPILER(lua     "Enable compiler for Lua" ON)
-THRIFT_ADD_COMPILER(gv      "Enable compiler for GraphViz" ON)
-THRIFT_ADD_COMPILER(xml     "Enable compiler for XML" ON)
 
 # Thrift is looking for include files in the src directory
 # we also add the current binary directory for generated files

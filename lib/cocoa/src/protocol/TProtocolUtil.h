@@ -20,14 +20,10 @@
 #import "TProtocol.h"
 #import "TTransport.h"
 
-NS_ASSUME_NONNULL_BEGIN
+@interface TProtocolUtil : NSObject {
 
+}
 
-@interface TProtocolUtil : NSObject
++ (void) skipType: (int) type onProtocol: (id <TProtocol>) protocol;
 
-+(BOOL) skipType:(int)type onProtocol:(id <TProtocol>)protocol error:(NSError **)error;
-
-@end;
-
-
-NS_ASSUME_NONNULL_END
+@end

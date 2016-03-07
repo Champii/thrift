@@ -79,7 +79,7 @@ test_simple (void)
   assert (s1->__isset_im_default == FALSE);
   assert (s1->__isset_im_optional == FALSE);  
   write_to_read (THRIFT_STRUCT (s1), THRIFT_STRUCT (s2), NULL, NULL);
-  assert (s2->__isset_im_default == TRUE);
+  assert (s2->__isset_im_default = TRUE);
   assert (s2->__isset_im_optional == FALSE);
   assert (s2->im_optional == 0);
 
@@ -187,26 +187,6 @@ test_tricky4 (void)
   g_object_unref (t3);
 }
 
-static void
-test_non_set_binary (void)
-{
-  TTestBinaries *b1 = NULL;
-  TTestBinaries *b2 = NULL;
-  GError *error = NULL;
-
-  b1 = g_object_new (T_TEST_TYPE_BINARIES, NULL);
-  b2 = g_object_new (T_TEST_TYPE_BINARIES, NULL);
-
-  write_to_read (THRIFT_STRUCT (b1), THRIFT_STRUCT (b2), NULL, &error);
-  g_assert(!error);
-  write_to_read (THRIFT_STRUCT (b2), THRIFT_STRUCT (b1), NULL, &error);
-  g_assert(!error);
-  /* OK. No segfault */
-
-  g_object_unref (b1);
-  g_object_unref (b2);
-}
-
 int
 main(int argc, char *argv[])
 {
@@ -222,7 +202,6 @@ main(int argc, char *argv[])
   g_test_add_func ("/testoptionalrequired/Tricky2", test_tricky2);
   g_test_add_func ("/testoptionalrequired/Tricky3", test_tricky3);
   g_test_add_func ("/testoptionalrequired/Tricky4", test_tricky4);
-  g_test_add_func ("/testoptionalrequired/Binary", test_non_set_binary);
 
   return g_test_run ();
 }

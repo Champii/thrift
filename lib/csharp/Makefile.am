@@ -66,10 +66,6 @@ THRIFTCODE= \
             src/Transport/TTLSSocket.cs \
             src/Transport/TTLSServerSocket.cs \
             src/TProcessor.cs \
-            src/TProcessorFactory.cs \
-            src/TSingletonProcessorFactory.cs \
-            src/TPrototypeProcessorFactory.cs \
-            src/TControllingHandler.cs \
             src/TException.cs \
             src/TApplicationException.cs
 
@@ -91,7 +87,7 @@ Thrift.dll: $(THRIFTCODE)
 clean-local:
 	$(RM) Thrift.dll
 
-precross: all-local
+precross:
 	$(MAKE) -C test/ThriftTest precross
 
 # run csharp tests?
@@ -104,6 +100,8 @@ EXTRA_DIST = \
              ThriftMSBuildTask \
              src/Thrift.csproj \
              src/Thrift.sln \
+             src/Thrift.WP7.csproj \
+             src/Properties/AssemblyInfo.WP7.cs \
              src/Transport/TSilverlightSocket.cs \
              test \
              coding_standards.md \

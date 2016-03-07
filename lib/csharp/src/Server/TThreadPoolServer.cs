@@ -38,7 +38,7 @@ namespace Thrift.Server
     private volatile bool stop = false;
 
     public TThreadPoolServer(TProcessor processor, TServerTransport serverTransport)
-        : this(new TSingletonProcessorFactory(processor), serverTransport,
+      : this(processor, serverTransport,
          new TTransportFactory(), new TTransportFactory(),
          new TBinaryProtocol.Factory(), new TBinaryProtocol.Factory(),
          DEFAULT_MIN_THREADS, DEFAULT_MAX_THREADS, DefaultLogDelegate)
@@ -46,43 +46,33 @@ namespace Thrift.Server
     }
 
     public TThreadPoolServer(TProcessor processor, TServerTransport serverTransport, LogDelegate logDelegate)
-        : this(new TSingletonProcessorFactory(processor), serverTransport,
+      : this(processor, serverTransport,
          new TTransportFactory(), new TTransportFactory(),
          new TBinaryProtocol.Factory(), new TBinaryProtocol.Factory(),
          DEFAULT_MIN_THREADS, DEFAULT_MAX_THREADS, logDelegate)
     {
     }
 
-    public TThreadPoolServer(TProcessor processor,
-     TServerTransport serverTransport,
-     TTransportFactory transportFactory,
-     TProtocolFactory protocolFactory)
-        : this(new TSingletonProcessorFactory(processor), serverTransport,
-           transportFactory, transportFactory,
-           protocolFactory, protocolFactory,
-           DEFAULT_MIN_THREADS, DEFAULT_MAX_THREADS, DefaultLogDelegate)
-    {
-    }
 
-    public TThreadPoolServer(TProcessorFactory processorFactory,
+    public TThreadPoolServer(TProcessor processor,
                  TServerTransport serverTransport,
                  TTransportFactory transportFactory,
                  TProtocolFactory protocolFactory)
-        : this(processorFactory, serverTransport,
+      : this(processor, serverTransport,
          transportFactory, transportFactory,
          protocolFactory, protocolFactory,
          DEFAULT_MIN_THREADS, DEFAULT_MAX_THREADS, DefaultLogDelegate)
     {
     }
 
-    public TThreadPoolServer(TProcessorFactory processorFactory,
+    public TThreadPoolServer(TProcessor processor,
                  TServerTransport serverTransport,
                  TTransportFactory inputTransportFactory,
                  TTransportFactory outputTransportFactory,
                  TProtocolFactory inputProtocolFactory,
                  TProtocolFactory outputProtocolFactory,
                  int minThreadPoolThreads, int maxThreadPoolThreads, LogDelegate logDel)
-        : base(processorFactory, serverTransport, inputTransportFactory, outputTransportFactory,
+      : base(processor, serverTransport, inputTransportFactory, outputTransportFactory,
           inputProtocolFactory, outputProtocolFactory, logDel)
     {
       lock (typeof(TThreadPoolServer))
@@ -159,7 +149,6 @@ namespace Thrift.Server
     private void Execute(Object threadContext)
     {
       TTransport client = (TTransport)threadContext;
-      TProcessor processor = processorFactory.GetProcessor(client, this);
       TTransport inputTransport = null;
       TTransport outputTransport = null;
       TProtocol inputProtocol = null;

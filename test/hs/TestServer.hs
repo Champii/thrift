@@ -31,7 +31,7 @@ import Network
 import System.Environment
 import System.Exit
 import System.IO
-import Control.Concurrent (threadDelay)
+import System.Posix.Unistd
 import qualified System.IO as IO
 import qualified Data.HashMap.Strict as Map
 import qualified Data.HashSet as Set
@@ -235,13 +235,13 @@ instance ThriftTest_Iface TestHandler where
     System.IO.putStrLn $ "testMultiException(" ++ show s1 ++ ", " ++ show s2 ++  ")"
     case s1 of
       "Xception"   -> throw $ Xception 1001 "This is an Xception"
-      "Xception2"  -> throw $ Xception2 2002 $ Xtruct "This is an Xception2" 0 0 0
+      "Xception2"  -> throw $ Xception2 2002 default_Xtruct
       "TException" -> throw ThriftException
       _ -> return default_Xtruct{ xtruct_string_thing = s2 }
 
   testOneway _ i = do
     System.IO.putStrLn $ "testOneway(" ++ show i ++ "): Sleeping..."
-    threadDelay $ (fromIntegral i) * 1000000
+    sleep (fromIntegral i)
     System.IO.putStrLn $ "testOneway(" ++ show i ++ "): done sleeping!"
 
 main :: IO ()

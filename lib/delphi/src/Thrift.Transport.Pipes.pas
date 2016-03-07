@@ -288,7 +288,7 @@ end;
 
 procedure TPipeStreamBase.Flush;
 begin
-  FlushFileBuffers( FPipe);
+  // nothing to do
 end;
 
 

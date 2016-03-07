@@ -21,27 +21,42 @@
 
 -behaviour(thrift_transport).
 
-%% constructors
--export([new/0, new/1]).
-%% protocol callbacks
--export([read/2, write/2, flush/1, close/1]).
-%% legacy api
--export([new_transport_factory/0]).
+%% API
+-export([new/0, new/1, new_transport_factory/0]).
 
+%% thrift_transport callbacks
+-export([write/2, read/2, flush/1, close/1]).
 
-%% wrapper around thrift_membuffer_transport for legacy reasons
+-record(memory_buffer, {buffer}).
+-type state() :: #memory_buffer{}.
+-include("thrift_transport_behaviour.hrl").
 
-new() -> thrift_membuffer_transport:new().
+new() ->
+    State = #memory_buffer{buffer = []},
+    thrift_transport:new(?MODULE, State).
 
-new(State) -> thrift_membuffer_transport:new(State).
+new (Buf) when is_list (Buf) ->
+  State = #memory_buffer{buffer = Buf},
+  thrift_transport:new(?MODULE, State);
+new (Buf) ->
+  State = #memory_buffer{buffer = [Buf]},
+  thrift_transport:new(?MODULE, State).
 
-new_transport_factory() -> {ok, fun() -> new() end}.
+new_transport_factory() ->
+    {ok, fun() -> new() end}.
 
-write(State, Data) -> thrift_membuffer_transport:write(State, Data).
+%% Writes data into the buffer
+write(State = #memory_buffer{buffer = Buf}, Data) ->
+    {State#memory_buffer{buffer = [Buf, Data]}, ok}.
 
-read(State, Data) -> thrift_membuffer_transport:read(State, Data).
+flush(State = #memory_buffer {buffer = Buf}) ->
+    {State#memory_buffer{buffer = []}, Buf}.
 
-flush(State) -> thrift_membuffer_transport:flush(State).
+close(State) ->
+    {State, ok}.
 
-close(State) -> thrift_membuffer_transport:close(State).
-
+read(State = #memory_buffer{buffer = Buf}, Len) when is_integer(Len) ->
+    Binary = iolist_to_binary(Buf),
+    Give = min(iolist_size(Binary), Len),
+    {Result, Remaining} = split_binary(Binary, Give),
+    {State#memory_buffer{buffer = Remaining}, {ok, Result}}.

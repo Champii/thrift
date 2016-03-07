@@ -22,10 +22,6 @@ set(Boost_USE_STATIC_LIBS ON) # Force the use of static boost test framework
 find_package(Boost 1.53.0 REQUIRED COMPONENTS chrono filesystem system thread unit_test_framework)
 include_directories(SYSTEM "${Boost_INCLUDE_DIRS}")
 
-if (WITH_DYN_LINK_TEST)
-    add_definitions( -DBOOST_TEST_DYN_LINK )
-endif()
-
 #Make sure gen-cpp files can be included
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
@@ -66,7 +62,6 @@ add_executable(Benchmark Benchmark.cpp)
 target_link_libraries(Benchmark testgencpp)
 LINK_AGAINST_THRIFT_LIBRARY(Benchmark thrift)
 add_test(NAME Benchmark COMMAND Benchmark)
-target_link_libraries(Benchmark testgencpp)
 
 set(UnitTest_SOURCES
     UnitTestMain.cpp
@@ -94,10 +89,7 @@ if ( MSVC )
 endif ( MSVC )
 
 
-set( TInterruptTest_SOURCES
-     TSocketInterruptTest.cpp
-     TSSLSocketInterruptTest.cpp
-)
+set( TInterruptTest_SOURCES TSocketInterruptTest.cpp )
 if (WIN32)
     list(APPEND TInterruptTest_SOURCES
         TPipeInterruptTest.cpp
@@ -109,10 +101,10 @@ target_link_libraries(TInterruptTest
     ${Boost_LIBRARIES}
 )
 LINK_AGAINST_THRIFT_LIBRARY(TInterruptTest thrift)
-if (NOT MSVC AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT MINGW)
+if (NOT MSVC AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_link_libraries(TInterruptTest -lrt)
 endif ()
-add_test(NAME TInterruptTest COMMAND TInterruptTest "${CMAKE_CURRENT_SOURCE_DIR}/../../../test/keys")
+add_test(NAME TInterruptTest COMMAND TInterruptTest)
 
 add_executable(TServerIntegrationTest TServerIntegrationTest.cpp)
 target_link_libraries(TServerIntegrationTest
@@ -120,13 +112,12 @@ target_link_libraries(TServerIntegrationTest
     ${Boost_LIBRARIES}
 )
 LINK_AGAINST_THRIFT_LIBRARY(TServerIntegrationTest thrift)
-if (NOT MSVC AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT MINGW)
+if (NOT MSVC AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_link_libraries(TServerIntegrationTest -lrt)
 endif ()
 add_test(NAME TServerIntegrationTest COMMAND TServerIntegrationTest)
 
 if(WITH_ZLIB)
-include_directories(SYSTEM "${ZLIB_INCLUDE_DIRS}")
 add_executable(TransportTest TransportTest.cpp)
 target_link_libraries(TransportTest
     testgencpp
@@ -258,7 +249,6 @@ set(link_test_SOURCES
 add_executable(link_test ${link_test_SOURCES})
 target_link_libraries(link_test testgencpp_cob)
 LINK_AGAINST_THRIFT_LIBRARY(link_test thrift)
-target_link_libraries(link_test testgencpp)
 add_test(NAME link_test COMMAND link_test)
 
 if(WITH_LIBEVENT)
@@ -307,7 +297,7 @@ target_link_libraries(SecurityTest
     ${Boost_LIBRARIES}
 )
 LINK_AGAINST_THRIFT_LIBRARY(SecurityTest thrift)
-if (NOT MSVC AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT MINGW)
+if (NOT MSVC AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_link_libraries(SecurityTest -lrt)
 endif ()
 add_test(NAME SecurityTest COMMAND SecurityTest "${CMAKE_CURRENT_SOURCE_DIR}/../../../test/keys")
@@ -336,33 +326,33 @@ endif()
 
 
 add_custom_command(OUTPUT gen-cpp/DebugProtoTest_types.cpp gen-cpp/DebugProtoTest_types.h gen-cpp/EmptyService.cpp  gen-cpp/EmptyService.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/DebugProtoTest.thrift
+    COMMAND thrift-compiler --gen cpp ${PROJECT_SOURCE_DIR}/test/DebugProtoTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/EnumTest_types.cpp gen-cpp/EnumTest_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/EnumTest.thrift
+    COMMAND thrift-compiler --gen cpp ${PROJECT_SOURCE_DIR}/test/EnumTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/TypedefTest_types.cpp gen-cpp/TypedefTest_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/TypedefTest.thrift
+    COMMAND thrift-compiler --gen cpp ${PROJECT_SOURCE_DIR}/test/TypedefTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/OptionalRequiredTest_types.cpp gen-cpp/OptionalRequiredTest_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/OptionalRequiredTest.thrift
+    COMMAND thrift-compiler --gen cpp ${PROJECT_SOURCE_DIR}/test/OptionalRequiredTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/Recursive_types.cpp gen-cpp/Recursive_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/Recursive.thrift
+    COMMAND thrift-compiler --gen cpp ${PROJECT_SOURCE_DIR}/test/Recursive.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/Service.cpp gen-cpp/StressTest_types.cpp
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/StressTest.thrift
+    COMMAND thrift-compiler --gen cpp ${PROJECT_SOURCE_DIR}/test/StressTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/SecondService.cpp gen-cpp/ThriftTest_constants.cpp gen-cpp/ThriftTest.cpp gen-cpp/ThriftTest_types.cpp gen-cpp/ThriftTest_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp ${PROJECT_SOURCE_DIR}/test/ThriftTest.thrift
+    COMMAND thrift-compiler --gen cpp ${PROJECT_SOURCE_DIR}/test/ThriftTest.thrift
 )
 
 add_custom_command(OUTPUT gen-cpp/ChildService.cpp gen-cpp/ChildService.h gen-cpp/ParentService.cpp gen-cpp/ParentService.h gen-cpp/proc_types.cpp gen-cpp/proc_types.h
-    COMMAND ${THRIFT_COMPILER} --gen cpp:templates,cob_style ${CMAKE_CURRENT_SOURCE_DIR}/processor/proc.thrift
+    COMMAND thrift-compiler --gen cpp:templates,cob_style ${CMAKE_CURRENT_SOURCE_DIR}/processor/proc.thrift
 )

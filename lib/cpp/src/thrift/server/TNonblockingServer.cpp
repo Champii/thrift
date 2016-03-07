@@ -69,10 +69,6 @@
 #define PRIu64 "I64u"
 #endif
 
-#if defined(_WIN32) && (_WIN32_WINNT < 0x0600)
-  #define AI_ADDRCONFIG 0x0400
-#endif
-
 namespace apache {
 namespace thrift {
 namespace server {
@@ -396,14 +392,8 @@ void TNonblockingServer::TConnection::init(THRIFT_SOCKET socket,
   factoryOutputTransport_ = server_->getOutputTransportFactory()->getTransport(outputTransport_);
 
   // Create protocol
-  if (server_->getHeaderTransport()) {
-    inputProtocol_ = server_->getInputProtocolFactory()->getProtocol(factoryInputTransport_,
-                                                                     factoryOutputTransport_);
-    outputProtocol_ = inputProtocol_;
-  } else {
-    inputProtocol_ = server_->getInputProtocolFactory()->getProtocol(factoryInputTransport_);
-    outputProtocol_ = server_->getOutputProtocolFactory()->getProtocol(factoryOutputTransport_);
-  }
+  inputProtocol_ = server_->getInputProtocolFactory()->getProtocol(factoryInputTransport_);
+  outputProtocol_ = server_->getOutputProtocolFactory()->getProtocol(factoryOutputTransport_);
 
   // Set up for any server event handler
   serverEventHandler_ = server_->getEventHandler();
@@ -545,13 +535,6 @@ void TNonblockingServer::TConnection::workSocket() {
   }
 }
 
-bool TNonblockingServer::getHeaderTransport() {
-  // Currently if there is no output protocol factory,
-  // we assume header transport (without having to create
-  // a new transport and check)
-  return getOutputProtocolFactory() == NULL;
-}
-
 /**
  * This is called when the application transitions from one state into
  * another. This means that it has finished writing the data that it needed
@@ -568,20 +551,12 @@ void TNonblockingServer::TConnection::transition() {
   case APP_READ_REQUEST:
     // We are done reading the request, package the read buffer into transport
     // and get back some data from the dispatch function
-    if (server_->getHeaderTransport()) {
-      inputTransport_->resetBuffer(readBuffer_, readBufferPos_);
-      outputTransport_->resetBuffer();
-    } else {
-      // We saved room for the framing size in case header transport needed it,
-      // but just skip it for the non-header case
-      inputTransport_->resetBuffer(readBuffer_ + 4, readBufferPos_ - 4);
-      outputTransport_->resetBuffer();
-
-      // Prepend four bytes of blank space to the buffer so we can
-      // write the frame size there later.
-      outputTransport_->getWritePtr(4);
-      outputTransport_->wroteBytes(4);
-    }
+    inputTransport_->resetBuffer(readBuffer_, readBufferPos_);
+    outputTransport_->resetBuffer();
+    // Prepend four bytes of blank space to the buffer so we can
+    // write the frame size there later.
+    outputTransport_->getWritePtr(4);
+    outputTransport_->wroteBytes(4);
 
     server_->incrementActiveProcessors();
 
@@ -716,8 +691,6 @@ void TNonblockingServer::TConnection::transition() {
     return;
 
   case APP_READ_FRAME_SIZE:
-    readWant_ += 4;
-
     // We just read the request length
     // Double the buffer size until it is big enough
     if (readWant_ > readBufferSize_) {
@@ -738,8 +711,7 @@ void TNonblockingServer::TConnection::transition() {
       readBufferSize_ = newSize;
     }
 
-    readBufferPos_ = 4;
-    *((uint32_t*)readBuffer_) = htonl(readWant_ - 4);
+    readBufferPos_ = 0;
 
     // Move into read request state
     socketState_ = SOCKET_RECV;
@@ -1028,10 +1000,6 @@ void TNonblockingServer::handleEvent(THRIFT_SOCKET fd, short which) {
  * Creates a socket to listen on and binds it to the local port.
  */
 void TNonblockingServer::createAndListenOnSocket() {
-#ifdef _WIN32
-  TWinsockSingleton::create();
-#endif // _WIN32
-
   THRIFT_SOCKET s;
 
   struct addrinfo hints, *res, *res0;
@@ -1137,16 +1105,10 @@ void TNonblockingServer::listenSocket(THRIFT_SOCKET s) {
   serverSocket_ = s;
 
   if (!port_) {
-    struct sockaddr_storage addr;
+    sockaddr_in addr;
     socklen_t size = sizeof(addr);
     if (!getsockname(serverSocket_, reinterpret_cast<sockaddr*>(&addr), &size)) {
-      if (addr.ss_family == AF_INET6) {
-        const struct sockaddr_in6* sin = reinterpret_cast<const struct sockaddr_in6*>(&addr);
-        listenPort_ = ntohs(sin->sin6_port);
-      } else {
-        const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(&addr);
-        listenPort_ = ntohs(sin->sin_port);
-      }
+      listenPort_ = ntohs(addr.sin_port);
     } else {
       GlobalOutput.perror("TNonblocking: failed to get listen port: ", THRIFT_GET_SOCKET_ERROR);
     }
